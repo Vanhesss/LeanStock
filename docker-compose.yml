@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://leanstock:leanstock_secret@postgres:5432/leanstock
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: super-secret-access-key-min-32-chars!!
+      JWT_REFRESH_SECRET: super-secret-refresh-key-min-32-chars!
+      JWT_ACCESS_EXPIRES_IN: 1h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      RATE_LIMIT_AUTH: 5
+      DEAD_STOCK_THRESHOLD_DAYS: 30
+      DEAD_STOCK_MARKDOWN_PERCENT: 10
+      DEAD_STOCK_INTERVAL_HOURS: 72
+      DEAD_STOCK_PRICE_FLOOR_PERCENT: 40
+      RESERVATION_TTL_HOURS: 24
+      CORS_ORIGIN: http://localhost:3000
+      DEFAULT_TENANT_ID: 00000000-0000-0000-0000-000000000001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: leanstock
+      POSTGRES_PASSWORD: leanstock_secret
+      POSTGRES_DB: leanstock
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leanstock"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:

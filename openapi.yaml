@@ -1,0 +1,707 @@
+openapi: 3.0.3
+info:
+  title: LeanStock API
+  description: Inventory Management System for Sneaker Retail Chain
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+security:
+  - BearerAuth: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+    PaginationMeta:
+      type: object
+      properties:
+        limit:
+          type: integer
+        total:
+          type: integer
+        cursor:
+          type: string
+          nullable: true
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          example: "manager@leanstock.kz"
+        firstName:
+          type: string
+          example: "Arman"
+        lastName:
+          type: string
+          example: "Bekturov"
+        role:
+          type: string
+          enum: [ADMIN, MANAGER, STAFF]
+        locationId:
+          type: string
+          format: uuid
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "admin@leanstock.kz"
+                password:
+                  type: string
+                  example: "Password123!"
+      responses:
+        "200":
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                      user:
+                        $ref: "#/components/schemas/User"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user (Admin/Manager only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, firstName, lastName, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                role:
+                  type: string
+                  enum: [MANAGER, STAFF]
+                locationId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: User created
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — insufficient role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: New token pair
+        "401":
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (revoke tokens)
+      responses:
+        "200":
+          description: Successfully logged out
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /products:
+    get:
+      tags: [Products]
+      summary: List products (cursor-based pagination)
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: brandId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        "200":
+          description: Product list
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [Products]
+      summary: Create product with variants (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [brandId, model, colorway, msrpPrice, sizes]
+              properties:
+                brandId:
+                  type: string
+                  format: uuid
+                model:
+                  type: string
+                  example: "Air Force 1"
+                colorway:
+                  type: string
+                  example: "Triple White"
+                msrpPrice:
+                  type: integer
+                  example: 55000
+                sizes:
+                  type: array
+                  items:
+                    type: number
+                  example: [38, 39, 40, 41, 42, 43, 44]
+      responses:
+        "201":
+          description: Product created
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Brand not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: List inventory at location
+      parameters:
+        - name: locationId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: lowStock
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        "200":
+          description: Inventory list
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /inventory/receive:
+    post:
+      tags: [Inventory]
+      summary: Receive stock (Manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [locationId, items]
+              properties:
+                locationId:
+                  type: string
+                  format: uuid
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      variantId:
+                        type: string
+                        format: uuid
+                      quantity:
+                        type: integer
+                        minimum: 1
+      responses:
+        "200":
+          description: Stock received
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /inventory/adjust:
+    post:
+      tags: [Inventory]
+      summary: Adjust stock (Manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [variantId, locationId, adjustment, reason]
+              properties:
+                variantId:
+                  type: string
+                  format: uuid
+                locationId:
+                  type: string
+                  format: uuid
+                adjustment:
+                  type: integer
+                reason:
+                  type: string
+                  enum: [DAMAGE, THEFT, CORRECTION, SUPPLIER_ERROR, AUDIT]
+      responses:
+        "200":
+          description: Stock adjusted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /transfers:
+    get:
+      tags: [Transfers]
+      summary: List transfers
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, IN_TRANSIT, COMPLETED, CANCELLED]
+        - name: locationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Transfer list
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [Transfers]
+      summary: Create transfer request (Manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceLocationId, destLocationId, items]
+              properties:
+                sourceLocationId:
+                  type: string
+                  format: uuid
+                destLocationId:
+                  type: string
+                  format: uuid
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      variantId:
+                        type: string
+                        format: uuid
+                      quantity:
+                        type: integer
+                        minimum: 1
+                note:
+                  type: string
+      responses:
+        "201":
+          description: Transfer created
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /transfers/{id}/approve:
+    patch:
+      tags: [Transfers]
+      summary: Approve transfer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Transfer approved
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in PENDING status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /transfers/{id}/reject:
+    patch:
+      tags: [Transfers]
+      summary: Reject transfer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Transfer rejected
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not in PENDING status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /transfers/{id}/ship:
+    patch:
+      tags: [Transfers]
+      summary: Ship transfer (SELECT FOR UPDATE atomic stock decrement)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Transfer shipped, stock decremented at source
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not APPROVED or insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /transfers/{id}/receive:
+    patch:
+      tags: [Transfers]
+      summary: Receive transfer (complete)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Transfer completed, stock incremented at destination
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Not IN_TRANSIT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"

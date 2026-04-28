@@ -1,0 +1,280 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────── ENUMS ────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum LocationType {
+  STORE
+  WAREHOUSE
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CONVERTED
+  CANCELLED
+  EXPIRED
+}
+
+enum AdjustmentReason {
+  DAMAGE
+  THEFT
+  CORRECTION
+  SUPPLIER_ERROR
+  AUDIT
+}
+
+// ──────────── MODELS ────────────
+
+model User {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  email       String   @unique
+  password    String
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  role        Role     @default(STAFF)
+  locationId  String?  @map("location_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  location      Location?     @relation(fields: [locationId], references: [id])
+  sales         Sale[]
+  reservations  Reservation[]
+  auditLogs     AuditLog[]
+
+  @@index([tenantId, email])
+  @@index([tenantId, locationId])
+  @@map("users")
+}
+
+model Location {
+  id        String       @id @default(uuid())
+  tenantId  String       @map("tenant_id")
+  name      String
+  type      LocationType
+  address   String?
+  city      String?
+  isActive  Boolean      @default(true) @map("is_active")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  users              User[]
+  inventory          Inventory[]
+  sales              Sale[]
+  transfersOut       Transfer[]    @relation("TransferSource")
+  transfersIn        Transfer[]    @relation("TransferDest")
+  reservations       Reservation[]
+  priceHistories     PriceHistory[]
+
+  @@index([tenantId])
+  @@map("locations")
+}
+
+model Brand {
+  id        String    @id @default(uuid())
+  tenantId  String    @map("tenant_id")
+  name      String
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  products  Product[]
+
+  @@unique([tenantId, name])
+  @@map("brands")
+}
+
+model Product {
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  brandId             String   @map("brand_id")
+  model               String
+  colorway            String
+  msrpPrice           Int      @map("msrp_price")
+  isActive            Boolean  @default(true) @map("is_active")
+  excludeFromMarkdown Boolean  @default(false) @map("exclude_from_markdown")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  brand    Brand            @relation(fields: [brandId], references: [id])
+  variants ProductVariant[]
+
+  @@index([tenantId, brandId])
+  @@index([tenantId, model])
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  sku       String   @unique
+  size      Decimal  @db.Decimal(4, 1)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  product        Product        @relation(fields: [productId], references: [id])
+  inventory      Inventory[]
+  sales          Sale[]
+  transferItems  TransferItem[]
+  reservations   Reservation[]
+  priceHistories PriceHistory[]
+
+  @@index([productId, size])
+  @@map("product_variants")
+}
+
+model Inventory {
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  variantId        String    @map("variant_id")
+  locationId       String    @map("location_id")
+  onHand           Int       @default(0) @map("on_hand")
+  reservedQuantity Int       @default(0) @map("reserved_quantity")
+  currentPrice     Int       @map("current_price")
+  lastSoldAt       DateTime? @map("last_sold_at")
+  lastMarkdownAt   DateTime? @map("last_markdown_at")
+  receivedAt       DateTime  @default(now()) @map("received_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  location  Location       @relation(fields: [locationId], references: [id])
+
+  @@unique([variantId, locationId])
+  @@index([tenantId, locationId])
+  @@index([tenantId, lastSoldAt])
+  @@map("inventory")
+}
+
+model Sale {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  variantId  String   @map("variant_id")
+  locationId String   @map("location_id")
+  soldBy     String   @map("sold_by")
+  quantity   Int      @default(1)
+  unitPrice  Int      @map("unit_price")
+  totalPrice Int      @map("total_price")
+  soldAt     DateTime @default(now()) @map("sold_at")
+
+  variant  ProductVariant @relation(fields: [variantId], references: [id])
+  location Location       @relation(fields: [locationId], references: [id])
+  staff    User           @relation(fields: [soldBy], references: [id])
+
+  @@index([tenantId, locationId, soldAt])
+  @@index([tenantId, variantId, soldAt])
+  @@map("sales")
+}
+
+model Transfer {
+  id              String         @id @default(uuid())
+  tenantId        String         @map("tenant_id")
+  sourceLocId     String         @map("source_location_id")
+  destLocId       String         @map("dest_location_id")
+  status          TransferStatus @default(PENDING)
+  requestedBy     String         @map("requested_by")
+  reviewedBy      String?        @map("reviewed_by")
+  rejectionReason String?        @map("rejection_reason")
+  note            String?
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  sourceLocation Location       @relation("TransferSource", fields: [sourceLocId], references: [id])
+  destLocation   Location       @relation("TransferDest", fields: [destLocId], references: [id])
+  items          TransferItem[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, sourceLocId])
+  @@index([tenantId, destLocId])
+  @@map("transfers")
+}
+
+model TransferItem {
+  id         String @id @default(uuid())
+  transferId String @map("transfer_id")
+  variantId  String @map("variant_id")
+  quantity   Int
+
+  transfer Transfer       @relation(fields: [transferId], references: [id])
+  variant  ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@map("transfer_items")
+}
+
+model Reservation {
+  id            String            @id @default(uuid())
+  tenantId      String            @map("tenant_id")
+  variantId     String            @map("variant_id")
+  locationId    String            @map("location_id")
+  reservedBy    String            @map("reserved_by")
+  quantity      Int               @default(1)
+  status        ReservationStatus @default(ACTIVE)
+  customerName  String?           @map("customer_name")
+  customerPhone String?           @map("customer_phone")
+  expiresAt     DateTime          @map("expires_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  variant  ProductVariant @relation(fields: [variantId], references: [id])
+  location Location       @relation(fields: [locationId], references: [id])
+  staff    User           @relation(fields: [reservedBy], references: [id])
+
+  @@index([tenantId, status, expiresAt])
+  @@index([tenantId, reservedBy, status])
+  @@map("reservations")
+}
+
+model PriceHistory {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  variantId  String   @map("variant_id")
+  locationId String   @map("location_id")
+  oldPrice   Int      @map("old_price")
+  newPrice   Int      @map("new_price")
+  reason     String
+  appliedAt  DateTime @default(now()) @map("applied_at")
+
+  variant  ProductVariant @relation(fields: [variantId], references: [id])
+  location Location       @relation(fields: [locationId], references: [id])
+
+  @@index([tenantId, variantId, appliedAt])
+  @@map("price_history")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  userId     String   @map("user_id")
+  action     String
+  entity     String
+  entityId   String   @map("entity_id")
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, entity, entityId])
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}

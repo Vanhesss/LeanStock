@@ -1,0 +1,475 @@
+{
+  "info": {
+    "name": "LeanStock API",
+    "description": "LeanStock API collection.\n\nRun `Auth / Login` first to populate the bearer token variables.\n\nSeed accounts:\n- admin@leanstock.kz / Password123!\n- manager@leanstock.kz / Password123!\n- staff@leanstock.kz / Password123!\n\nSeed locations:\n- Mega Store: 10000000-0000-0000-0000-000000000001\n- Dostyk Store: 10000000-0000-0000-0000-000000000002\n- Keruen Store: 10000000-0000-0000-0000-000000000003\n- Warehouse: 10000000-0000-0000-0000-000000000004\n\nSeed brands:\n- Nike: 20000000-0000-0000-0000-000000000001\n- Adidas: 20000000-0000-0000-0000-000000000002\n- New Balance: 20000000-0000-0000-0000-000000000003",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "productId", "value": "", "type": "string" },
+    { "key": "variantId", "value": "", "type": "string" },
+    { "key": "transferId", "value": "", "type": "string" },
+    { "key": "brandNikeId", "value": "20000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "megaLocationId", "value": "10000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "dostykLocationId", "value": "10000000-0000-0000-0000-000000000002", "type": "string" },
+    { "key": "keruenLocationId", "value": "10000000-0000-0000-0000-000000000003", "type": "string" },
+    { "key": "warehouseLocationId", "value": "10000000-0000-0000-0000-000000000004", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@leanstock.kz\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/register",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('_registerEmail', `user-${Date.now()}@leanstock.kz`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{_registerEmail}}\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Aisha\",\n  \"lastName\": \"Nurova\",\n  \"role\": \"STAFF\",\n  \"locationId\": \"{{megaLocationId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('accessToken', '');",
+                  "pm.collectionVariables.set('refreshToken', '');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "GET /api/v1/products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && Array.isArray(res.data) && res.data.length > 0) {",
+                  "  pm.collectionVariables.set('productId', res.data[0].id);",
+                  "  if (Array.isArray(res.data[0].variants) && res.data[0].variants.length > 0) {",
+                  "    pm.collectionVariables.set('variantId', res.data[0].variants[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "brandId", "value": "{{brandNikeId}}", "disabled": true },
+                { "key": "search", "value": "Air Max", "disabled": true },
+                { "key": "isActive", "value": "true", "disabled": true },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/products/:id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/products",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('_productModel', `Blazer Mid 77 ${Date.now()}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  pm.collectionVariables.set('productId', res.data.id);",
+                  "  if (Array.isArray(res.data.variants) && res.data.variants.length > 0) {",
+                  "    pm.collectionVariables.set('variantId', res.data.variants[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brandId\": \"{{brandNikeId}}\",\n  \"model\": \"{{_productModel}}\",\n  \"colorway\": \"Vintage White\",\n  \"msrpPrice\": 58000,\n  \"sizes\": [39, 40, 41]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/products/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"msrpPrice\": 70000,\n  \"excludeFromMarkdown\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", "{{productId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "GET /api/v1/inventory",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && Array.isArray(res.data) && res.data.length > 0) {",
+                  "  pm.collectionVariables.set('variantId', res.data[0].variantId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory?locationId={{megaLocationId}}&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "inventory"],
+              "query": [
+                { "key": "locationId", "value": "{{megaLocationId}}" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "Air Max", "disabled": true },
+                { "key": "lowStock", "value": "true", "disabled": true },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/inventory/receive",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationId\": \"{{megaLocationId}}\",\n  \"items\": [\n    {\n      \"variantId\": \"{{variantId}}\",\n      \"quantity\": 5\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/receive",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "inventory", "receive"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/inventory/adjust",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"locationId\": \"{{megaLocationId}}\",\n  \"adjustment\": -1,\n  \"reason\": \"DAMAGE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/adjust",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "inventory", "adjust"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transfers",
+      "item": [
+        {
+          "name": "GET /api/v1/transfers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && Array.isArray(res.data) && res.data.length > 0) {",
+                  "  pm.collectionVariables.set('transferId', res.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "status", "value": "PENDING", "disabled": true },
+                { "key": "locationId", "value": "{{megaLocationId}}", "disabled": true },
+                { "key": "cursor", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/transfers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  pm.collectionVariables.set('transferId', res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceLocationId\": \"{{warehouseLocationId}}\",\n  \"destLocationId\": \"{{keruenLocationId}}\",\n  \"items\": [\n    {\n      \"variantId\": \"{{variantId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"note\": \"Postman transfer flow\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/transfers/:id/approve",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/{{transferId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "{{transferId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/transfers/:id/reject",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Not needed anymore\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/{{transferId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "{{transferId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/transfers/:id/ship",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/{{transferId}}/ship",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "{{transferId}}", "ship"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/transfers/:id/receive",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transfers/{{transferId}}/receive",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transfers", "{{transferId}}", "receive"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

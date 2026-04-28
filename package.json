@@ -1,0 +1,41 @@
+{
+  "name": "leanstock",
+  "version": "1.0.0",
+  "description": "Inventory Management System for Sneaker Retail Chain",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "lint": "eslint src/ --ext .js",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:unit": "jest tests/unit --forceExit",
+    "test:integration": "jest tests/integration --forceExit --detectOpenHandles",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:seed": "node prisma/seed.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^3.0.3",
+    "pino": "^9.5.0",
+    "pino-pretty": "^11.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "prisma": "^5.22.0",
+    "supertest": "^7.0.0"
+  }
+}
