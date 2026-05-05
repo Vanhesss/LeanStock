@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feature/*]
   pull_request:
     branches: [main]
 
@@ -43,6 +43,12 @@ jobs:
       JWT_REFRESH_SECRET: ci-test-refresh-secret-32-characters!
       CORS_ORIGIN: http://localhost:3000
       DEFAULT_TENANT_ID: "00000000-0000-0000-0000-000000000001"
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: "587"
+      SMTP_USER: ci-test@example.com
+      SMTP_PASS: ci-test-password
+      SMTP_FROM: noreply@leanstock.kz
+      APP_URL: http://localhost:3000
 
     steps:
       - uses: actions/checkout@v4

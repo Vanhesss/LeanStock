@@ -2,7 +2,6 @@ const { Router } = require('express');
 const { salesController } = require('./sales.controller');
 const { validate } = require('../../middleware/validate');
 const { authenticate } = require('../../middleware/authenticate');
-const { authorize } = require('../../middleware/authorize');
 const { createSaleSchema } = require('./sales.schema');
 
 const router = Router();
