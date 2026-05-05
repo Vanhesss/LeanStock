@@ -1,6 +1,8 @@
 const prisma = require('../../config/prisma');
 const { NotFoundError, ConflictError, AppError } = require('../../utils/errors');
 const { parsePagination, buildPaginationMeta, decodeCursor } = require('../../utils/pagination');
+const { sendEmail } = require('../../config/email');
+const { transferShippedEmail } = require('../../utils/emailTemplates');
 
 class TransfersService {
   async list(tenantId, query) {
@@ -187,6 +189,23 @@ class TransfersService {
           items: { include: { variant: { select: { sku: true } } } },
         },
       });
+    }).then((result) => {
+      // Send transfer shipped email notification (async, non-blocking)
+      const requester = prisma.user.findUnique({ where: { id: result.requestedBy } });
+      requester.then((user) => {
+        if (user) {
+          sendEmail({
+            to: user.email,
+            ...transferShippedEmail(user.email, {
+              id: result.id,
+              sourceLocation: result.sourceLocation.name,
+              destLocation: result.destLocation.name,
+              itemCount: result.items.length,
+            }),
+          });
+        }
+      }).catch(() => {});
+      return result;
     });
   }
 

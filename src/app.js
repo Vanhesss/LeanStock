@@ -11,6 +11,8 @@ const authRoutes = require('./modules/auth/auth.routes');
 const productsRoutes = require('./modules/products/products.routes');
 const inventoryRoutes = require('./modules/inventory/inventory.routes');
 const transfersRoutes = require('./modules/transfers/transfers.routes');
+const salesRoutes = require('./modules/sales/sales.routes');
+const reservationsRoutes = require('./modules/reservations/reservations.routes');
 
 const app = express();
 
@@ -41,6 +43,8 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/products', productsRoutes);
 app.use('/api/v1/inventory', inventoryRoutes);
 app.use('/api/v1/transfers', transfersRoutes);
+app.use('/api/v1/sales', salesRoutes);
+app.use('/api/v1/reservations', reservationsRoutes);
 
 // ──────────── 404 handler ────────────
 app.use((_req, res) => {
