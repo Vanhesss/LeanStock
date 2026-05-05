@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: LeanStock API
   description: Inventory Management System for Sneaker Retail Chain
-  version: 1.0.0
+  version: 2.0.0
 servers:
   - url: http://localhost:3000/api/v1
     description: Local development
@@ -65,6 +65,8 @@ components:
           nullable: true
         isActive:
           type: boolean
+        isEmailVerified:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -73,6 +75,7 @@ paths:
     post:
       tags: [Auth]
       summary: Login
+      description: Returns JWT access and refresh tokens. Requires verified email.
       security: []
       requestBody:
         required: true
@@ -109,7 +112,7 @@ paths:
                       user:
                         $ref: "#/components/schemas/User"
         "401":
-          description: Invalid credentials
+          description: Invalid credentials or email not verified
           content:
             application/json:
               schema:
@@ -126,16 +129,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /auth/register:
     post:
       tags: [Auth]
       summary: Register new user (Admin/Manager only)
+      description: Creates user and sends verification email. User must verify before login.
       requestBody:
         required: true
         content:
@@ -162,7 +160,7 @@ paths:
                   format: uuid
       responses:
         "201":
-          description: User created
+          description: User created, verification email sent
         "401":
           description: Unauthorized
           content:
@@ -187,8 +185,100 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Verify email address
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  example: "64-character-hex-token"
+      responses:
+        "200":
+          description: Email verified successfully
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      description: Always returns success to prevent email enumeration.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "admin@leanstock.kz"
+      responses:
+        "200":
+          description: Reset email sent (if account exists)
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                  example: "NewPassword123!"
+      responses:
+        "200":
+          description: Password reset successfully
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
           content:
             application/json:
               schema:
@@ -217,12 +307,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /auth/logout:
     post:
       tags: [Auth]
@@ -232,12 +316,6 @@ paths:
           description: Successfully logged out
         "401":
           description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
           content:
             application/json:
               schema:
@@ -275,12 +353,6 @@ paths:
           description: Product list
         "401":
           description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
           content:
             application/json:
               schema:
@@ -340,8 +412,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
+  /products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Product details with variants
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Products]
+      summary: Update product (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                colorway:
+                  type: string
+                msrpPrice:
+                  type: integer
+                isActive:
+                  type: boolean
+                excludeFromMarkdown:
+                  type: boolean
+      responses:
+        "200":
+          description: Product updated
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
@@ -371,17 +499,15 @@ paths:
           schema:
             type: string
             enum: ["true", "false"]
+        - name: search
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Inventory list
         "401":
           description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
           content:
             application/json:
               schema:
@@ -405,6 +531,7 @@ paths:
                   type: array
                   items:
                     type: object
+                    required: [variantId, quantity]
                     properties:
                       variantId:
                         type: string
@@ -427,16 +554,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /inventory/adjust:
     post:
       tags: [Inventory]
-      summary: Adjust stock (Manager+)
+      summary: Adjust stock with SELECT FOR UPDATE (Manager+)
       requestBody:
         required: true
         content:
@@ -453,18 +574,13 @@ paths:
                   format: uuid
                 adjustment:
                   type: integer
+                  description: Positive to add, negative to remove
                 reason:
                   type: string
                   enum: [DAMAGE, THEFT, CORRECTION, SUPPLIER_ERROR, AUDIT]
       responses:
         "200":
           description: Stock adjusted
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
         "403":
           description: Forbidden
           content:
@@ -477,16 +593,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /transfers:
     get:
       tags: [Transfers]
-      summary: List transfers
+      summary: List transfers (Manager+)
       parameters:
         - name: status
           in: query
@@ -522,12 +632,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
     post:
       tags: [Transfers]
       summary: Create transfer request (Manager+)
@@ -549,6 +653,7 @@ paths:
                   type: array
                   items:
                     type: object
+                    required: [variantId, quantity]
                     properties:
                       variantId:
                         type: string
@@ -561,12 +666,6 @@ paths:
       responses:
         "201":
           description: Transfer created
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
         "401":
           description: Unauthorized
           content:
@@ -585,16 +684,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /transfers/{id}/approve:
     patch:
       tags: [Transfers]
-      summary: Approve transfer
+      summary: Approve transfer (Manager+)
       parameters:
         - name: id
           in: path
@@ -620,7 +713,7 @@ paths:
   /transfers/{id}/reject:
     patch:
       tags: [Transfers]
-      summary: Reject transfer
+      summary: Reject transfer (Manager+)
       parameters:
         - name: id
           in: path
@@ -656,7 +749,7 @@ paths:
   /transfers/{id}/ship:
     patch:
       tags: [Transfers]
-      summary: Ship transfer (SELECT FOR UPDATE atomic stock decrement)
+      summary: Ship transfer (atomic stock decrement with SELECT FOR UPDATE)
       parameters:
         - name: id
           in: path
@@ -701,6 +794,338 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: Not IN_TRANSIT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sales:
+    get:
+      tags: [Sales]
+      summary: List sales (cursor pagination)
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: variantId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Sales list with pagination
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        sku:
+                          type: string
+                        productModel:
+                          type: string
+                        brandName:
+                          type: string
+                        quantity:
+                          type: integer
+                        unitPrice:
+                          type: integer
+                        totalPrice:
+                          type: integer
+                        soldBy:
+                          type: string
+                        locationName:
+                          type: string
+                        soldAt:
+                          type: string
+                          format: date-time
+                  meta:
+                    $ref: "#/components/schemas/PaginationMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [Sales]
+      summary: Record a sale (decrements inventory with SELECT FOR UPDATE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [variantId, locationId, quantity, unitPrice]
+              properties:
+                variantId:
+                  type: string
+                  format: uuid
+                locationId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  example: 1
+                unitPrice:
+                  type: integer
+                  minimum: 1
+                  description: Price in tenge (smallest currency unit)
+                  example: 65000
+      responses:
+        "201":
+          description: Sale recorded, inventory decremented
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Inventory record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sales/{id}:
+    get:
+      tags: [Sales]
+      summary: Get sale by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Sale details
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /reservations:
+    get:
+      tags: [Reservations]
+      summary: List reservations
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, CONVERTED, CANCELLED, EXPIRED]
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Reservations list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        sku:
+                          type: string
+                        productModel:
+                          type: string
+                        quantity:
+                          type: integer
+                        customerName:
+                          type: string
+                        customerPhone:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                          enum: [ACTIVE, CONVERTED, CANCELLED, EXPIRED]
+                        expiresAt:
+                          type: string
+                          format: date-time
+                        locationName:
+                          type: string
+                        reservedBy:
+                          type: string
+                  meta:
+                    $ref: "#/components/schemas/PaginationMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [Reservations]
+      summary: Create reservation (locks stock with SELECT FOR UPDATE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [variantId, locationId, customerName]
+              properties:
+                variantId:
+                  type: string
+                  format: uuid
+                locationId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  default: 1
+                customerName:
+                  type: string
+                  example: "Alibek Nurlan"
+                customerPhone:
+                  type: string
+                  example: "+77001234567"
+      responses:
+        "201":
+          description: Reservation created, stock reserved
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Inventory not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Insufficient available stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /reservations/{id}/cancel:
+    patch:
+      tags: [Reservations]
+      summary: Cancel reservation (releases reserved stock)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reservation cancelled, stock released
+        "400":
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /reservations/{id}/convert:
+    patch:
+      tags: [Reservations]
+      summary: Convert reservation to sale
+      description: Converts an active reservation into a sale record, decrementing both onHand and reservedQuantity.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reservation converted to sale
+        "400":
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
