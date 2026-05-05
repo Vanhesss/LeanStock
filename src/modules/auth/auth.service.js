@@ -1,9 +1,12 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { env } = require('../../config/env');
 const prisma = require('../../config/prisma');
 const redis = require('../../config/redis');
-const { UnauthorizedError, ConflictError, NotFoundError } = require('../../utils/errors');
+const { sendEmail } = require('../../config/email');
+const { verificationEmail, passwordResetEmail } = require('../../utils/emailTemplates');
+const { UnauthorizedError, ConflictError, NotFoundError, AppError } = require('../../utils/errors');
 
 class AuthService {
   async login(email, password) {
@@ -16,6 +19,10 @@ class AuthService {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       throw new UnauthorizedError('Invalid email or password');
+    }
+
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedError('Please verify your email before logging in');
     }
 
     const tokens = this.generateTokens({
@@ -69,6 +76,8 @@ class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
     const user = await prisma.user.create({
       data: {
@@ -79,6 +88,9 @@ class AuthService {
         lastName: data.lastName,
         role: data.role,
         locationId: data.locationId || null,
+        isEmailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
       },
       select: {
         id: true,
@@ -88,9 +100,14 @@ class AuthService {
         role: true,
         locationId: true,
         isActive: true,
+        isEmailVerified: true,
         createdAt: true,
       },
     });
+
+    // Send verification email (async, non-blocking)
+    const emailContent = verificationEmail(data.firstName, verificationToken);
+    sendEmail({ to: data.email, ...emailContent });
 
     return user;
   }
@@ -168,6 +185,89 @@ class AuthService {
     } catch {
       // Logout becomes best-effort when Redis is unavailable.
     }
+  }
+
+  async verifyEmail(token) {
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerificationToken: token,
+        emailVerificationExpires: { gt: new Date() },
+      },
+    });
+
+    if (!user) {
+      throw new AppError(400, 'INVALID_TOKEN', 'Invalid or expired verification token');
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+      },
+    });
+
+    return { message: 'Email verified successfully' };
+  }
+
+  async forgotPassword(email) {
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Always return success to prevent email enumeration
+    if (!user || !user.isActive) {
+      return { message: 'If an account exists with this email, a reset link has been sent' };
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: resetToken,
+        passwordResetExpires: resetExpires,
+      },
+    });
+
+    const emailContent = passwordResetEmail(user.firstName, resetToken);
+    sendEmail({ to: email, ...emailContent });
+
+    return { message: 'If an account exists with this email, a reset link has been sent' };
+  }
+
+  async resetPassword(token, newPassword) {
+    const user = await prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: { gt: new Date() },
+      },
+    });
+
+    if (!user) {
+      throw new AppError(400, 'INVALID_TOKEN', 'Invalid or expired reset token');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+      },
+    });
+
+    // Invalidate all refresh tokens for this user
+    try {
+      const keys = await redis.keys(`rt:${user.id}:*`);
+      if (keys.length > 0) await redis.del(...keys);
+    } catch {
+      // Best-effort token cleanup
+    }
+
+    return { message: 'Password reset successfully' };
   }
 
   generateTokens(payload) {

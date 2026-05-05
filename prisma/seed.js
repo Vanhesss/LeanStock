@@ -38,13 +38,13 @@ async function main() {
 
   await Promise.all([
     prisma.user.create({
-      data: { tenantId: TENANT_ID, email: 'admin@leanstock.kz', password: hashedPass, firstName: 'Arman', lastName: 'Bekturov', role: 'ADMIN' },
+      data: { tenantId: TENANT_ID, email: 'admin@leanstock.kz', password: hashedPass, firstName: 'Arman', lastName: 'Bekturov', role: 'ADMIN', isEmailVerified: true },
     }),
     prisma.user.create({
-      data: { tenantId: TENANT_ID, email: 'manager@leanstock.kz', password: hashedPass, firstName: 'Dana', lastName: 'Omarova', role: 'MANAGER', locationId: LOC_MEGA },
+      data: { tenantId: TENANT_ID, email: 'manager@leanstock.kz', password: hashedPass, firstName: 'Dana', lastName: 'Omarova', role: 'MANAGER', locationId: LOC_MEGA, isEmailVerified: true },
     }),
     prisma.user.create({
-      data: { tenantId: TENANT_ID, email: 'staff@leanstock.kz', password: hashedPass, firstName: 'Baurzhan', lastName: 'Kasymov', role: 'STAFF', locationId: LOC_MEGA },
+      data: { tenantId: TENANT_ID, email: 'staff@leanstock.kz', password: hashedPass, firstName: 'Baurzhan', lastName: 'Kasymov', role: 'STAFF', locationId: LOC_MEGA, isEmailVerified: true },
     }),
   ]);
 

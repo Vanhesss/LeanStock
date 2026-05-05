@@ -51,6 +51,16 @@ const envSchema = z.object({
   RESERVATION_TTL_HOURS: z.coerce.number().default(24),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   DEFAULT_TENANT_ID: z.string().default('00000000-0000-0000-0000-000000000001'),
+
+  // SMTP (Email)
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  SMTP_FROM: z.string().default('noreply@leanstock.kz'),
+
+  // App URL (for email links)
+  APP_URL: z.string().default('http://localhost:3000'),
 });
 
 function validateEnv() {
