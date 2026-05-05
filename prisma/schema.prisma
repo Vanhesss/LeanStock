@@ -47,17 +47,22 @@ enum AdjustmentReason {
 // ──────────── MODELS ────────────
 
 model User {
-  id          String   @id @default(uuid())
-  tenantId    String   @map("tenant_id")
-  email       String   @unique
-  password    String
-  firstName   String   @map("first_name")
-  lastName    String   @map("last_name")
-  role        Role     @default(STAFF)
-  locationId  String?  @map("location_id")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                        String    @id @default(uuid())
+  tenantId                  String    @map("tenant_id")
+  email                     String    @unique
+  password                  String
+  firstName                 String    @map("first_name")
+  lastName                  String    @map("last_name")
+  role                      Role      @default(STAFF)
+  locationId                String?   @map("location_id")
+  isActive                  Boolean   @default(true) @map("is_active")
+  isEmailVerified           Boolean   @default(false) @map("is_email_verified")
+  emailVerificationToken    String?   @map("email_verification_token")
+  emailVerificationExpires  DateTime? @map("email_verification_expires")
+  passwordResetToken        String?   @map("password_reset_token")
+  passwordResetExpires      DateTime? @map("password_reset_expires")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
 
   location      Location?     @relation(fields: [locationId], references: [id])
   sales         Sale[]
