@@ -1,6 +1,5 @@
 const prisma = require('../../config/prisma');
 const { getQueues, deadStockQueue, reservationExpiryQueue } = require('../../config/queue');
-const { NotFoundError } = require('../../utils/errors');
 const { parsePagination, buildPaginationMeta, decodeCursor } = require('../../utils/pagination');
 
 class AdminService {

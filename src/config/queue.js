@@ -1,4 +1,4 @@
-const { Queue, Worker, QueueEvents } = require('bullmq');
+const { Queue, Worker } = require('bullmq');
 const { env } = require('./env');
 const logger = require('../utils/logger');
 
