@@ -8,22 +8,23 @@ const { reservationCreatedEmail } = require('../../utils/emailTemplates');
 class ReservationsService {
   async create(tenantId, data, userId) {
     return prisma.$transaction(async (tx) => {
-      // Lock inventory row
-      const [inventory] = await tx.$queryRaw`
-        SELECT i.*, pv.sku
-        FROM inventory i
-        JOIN product_variants pv ON pv.id = i.variant_id
-        WHERE i.variant_id = ${data.variantId}
-          AND i.location_id = ${data.locationId}
-          AND i.tenant_id = ${tenantId}
-        FOR UPDATE
-      `;
+      // Find inventory record
+      const inventory = await tx.inventory.findFirst({
+        where: {
+          variantId: data.variantId,
+          locationId: data.locationId,
+          tenantId,
+        },
+        include: {
+          variant: { select: { sku: true } },
+        },
+      });
 
       if (!inventory) {
         throw new NotFoundError('Inventory record');
       }
 
-      const available = inventory.on_hand - inventory.reserved_quantity;
+      const available = inventory.onHand - inventory.reservedQuantity;
       if (available < data.quantity) {
         throw new ConflictError('Insufficient available stock for reservation', {
           available,
@@ -75,7 +76,7 @@ class ReservationsService {
         ...reservationCreatedEmail(reservation.staff.email, {
           customerName: data.customerName,
           customerPhone: data.customerPhone,
-          sku: inventory.sku,
+          sku: inventory.variant.sku,
           quantity: data.quantity,
           expiresAt: expiresAt.toISOString(),
         }),
@@ -85,7 +86,7 @@ class ReservationsService {
         id: reservation.id,
         variantId: reservation.variantId,
         locationId: reservation.locationId,
-        sku: inventory.sku,
+        sku: inventory.variant.sku,
         productModel: reservation.variant.product.model,
         quantity: reservation.quantity,
         customerName: reservation.customerName,
@@ -95,7 +96,7 @@ class ReservationsService {
         locationName: reservation.location.name,
         createdAt: reservation.createdAt,
       };
-    });
+    }, { isolationLevel: 'Serializable' });
   }
 
   async list(tenantId, query) {
@@ -198,13 +199,17 @@ class ReservationsService {
     }
 
     return prisma.$transaction(async (tx) => {
-      // Lock inventory
-      const [inventory] = await tx.$queryRaw`
-        SELECT * FROM inventory
-        WHERE variant_id = ${reservation.variantId}
-          AND location_id = ${reservation.locationId}
-        FOR UPDATE
-      `;
+      // Find inventory record
+      const inventory = await tx.inventory.findFirst({
+        where: {
+          variantId: reservation.variantId,
+          locationId: reservation.locationId,
+        },
+      });
+
+      if (!inventory) {
+        throw new NotFoundError('Inventory record');
+      }
 
       // Update reservation status
       await tx.reservation.update({
@@ -223,7 +228,7 @@ class ReservationsService {
       });
 
       // Create the sale
-      const currentPrice = Number(inventory.current_price);
+      const currentPrice = inventory.currentPrice;
       const sale = await tx.sale.create({
         data: {
           tenantId,
@@ -248,7 +253,7 @@ class ReservationsService {
       });
 
       return { reservation: { id, status: 'CONVERTED' }, sale };
-    });
+    }, { isolationLevel: 'Serializable' });
   }
 }
 

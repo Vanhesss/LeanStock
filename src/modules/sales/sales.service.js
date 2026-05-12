@@ -7,23 +7,24 @@ const { saleConfirmationEmail } = require('../../utils/emailTemplates');
 class SalesService {
   async create(tenantId, data, userId) {
     return prisma.$transaction(async (tx) => {
-      // Lock inventory row to prevent overselling
-      const [inventory] = await tx.$queryRaw`
-        SELECT i.*, pv.sku, l.name AS location_name
-        FROM inventory i
-        JOIN product_variants pv ON pv.id = i.variant_id
-        JOIN locations l ON l.id = i.location_id
-        WHERE i.variant_id = ${data.variantId}
-          AND i.location_id = ${data.locationId}
-          AND i.tenant_id = ${tenantId}
-        FOR UPDATE
-      `;
+      // Find inventory record with related data
+      const inventory = await tx.inventory.findFirst({
+        where: {
+          variantId: data.variantId,
+          locationId: data.locationId,
+          tenantId,
+        },
+        include: {
+          variant: { select: { sku: true } },
+          location: { select: { name: true } },
+        },
+      });
 
       if (!inventory) {
         throw new NotFoundError('Inventory record');
       }
 
-      const available = inventory.on_hand - inventory.reserved_quantity;
+      const available = inventory.onHand - inventory.reservedQuantity;
       if (available < data.quantity) {
         throw new ConflictError('Insufficient stock', {
           available,
@@ -76,10 +77,10 @@ class SalesService {
       sendEmail({
         to: sale.staff.email,
         ...saleConfirmationEmail(sale.staff.email, {
-          sku: inventory.sku,
+          sku: inventory.variant.sku,
           quantity: data.quantity,
           totalPrice,
-          locationName: inventory.location_name,
+          locationName: inventory.location.name,
         }),
       });
 
@@ -97,7 +98,7 @@ class SalesService {
         locationName: sale.location.name,
         soldAt: sale.soldAt,
       };
-    });
+    }, { isolationLevel: 'Serializable' });
   }
 
   async list(tenantId, query) {

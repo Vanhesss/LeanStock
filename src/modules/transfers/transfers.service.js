@@ -131,11 +131,11 @@ class TransfersService {
   }
 
   /**
-   * Ship transfer — atomically decrement stock at source using SELECT FOR UPDATE.
+   * Ship transfer — atomically decrement stock at source using Serializable transaction.
    * This prevents overselling when two managers ship simultaneously.
    */
   async ship(tenantId, transferId) {
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const transfer = await tx.transfer.findFirst({
         where: { id: transferId, tenantId },
         include: { items: true },
@@ -147,23 +147,21 @@ class TransfersService {
         });
       }
 
-      // Lock and decrement source inventory for each item
+      // Validate and decrement source inventory for each item
       for (const item of transfer.items) {
-        // SELECT FOR UPDATE — locks the row until transaction completes
-        const [inv] = await tx.$queryRaw`
-          SELECT id, on_hand, reserved_quantity
-          FROM inventory
-          WHERE variant_id = ${item.variantId}
-            AND location_id = ${transfer.sourceLocId}
-            AND tenant_id = ${tenantId}
-          FOR UPDATE
-        `;
+        const inv = await tx.inventory.findFirst({
+          where: {
+            variantId: item.variantId,
+            locationId: transfer.sourceLocId,
+            tenantId,
+          },
+        });
 
         if (!inv) {
           throw new NotFoundError('Inventory record for variant ' + item.variantId);
         }
 
-        const available = inv.on_hand - inv.reserved_quantity;
+        const available = inv.onHand - inv.reservedQuantity;
         if (available < item.quantity) {
           throw new ConflictError('Insufficient stock to ship', {
             variantId: item.variantId,
@@ -189,10 +187,11 @@ class TransfersService {
           items: { include: { variant: { select: { sku: true } } } },
         },
       });
-    }).then((result) => {
-      // Send transfer shipped email notification (async, non-blocking)
-      const requester = prisma.user.findUnique({ where: { id: result.requestedBy } });
-      requester.then((user) => {
+    }, { isolationLevel: 'Serializable' });
+
+    // Send transfer shipped email notification (async, non-blocking)
+    prisma.user.findUnique({ where: { id: result.requestedBy } })
+      .then((user) => {
         if (user) {
           sendEmail({
             to: user.email,
@@ -204,9 +203,10 @@ class TransfersService {
             }),
           });
         }
-      }).catch(() => {});
-      return result;
-    });
+      })
+      .catch(() => {});
+
+    return result;
   }
 
   /**

@@ -13,49 +13,64 @@ const logger = require('../utils/logger');
  * All parameters are configurable via environment variables — NOT hardcoded.
  */
 async function runDeadStockDecay() {
-  const thresholdDays = env.DEAD_STOCK_THRESHOLD_DAYS;    // default: 30
-  const markdownPercent = env.DEAD_STOCK_MARKDOWN_PERCENT; // default: 10
-  const intervalHours = env.DEAD_STOCK_INTERVAL_HOURS;     // default: 72
-  const priceFloorPercent = env.DEAD_STOCK_PRICE_FLOOR_PERCENT; // default: 40
+  const thresholdDays = env.DEAD_STOCK_THRESHOLD_DAYS;
+  const markdownPercent = env.DEAD_STOCK_MARKDOWN_PERCENT;
+  const intervalHours = env.DEAD_STOCK_INTERVAL_HOURS;
+  const priceFloorPercent = env.DEAD_STOCK_PRICE_FLOOR_PERCENT;
 
   logger.info({ thresholdDays, markdownPercent, intervalHours, priceFloorPercent }, 'Dead stock decay job started');
 
-  // Find dead stock candidates using raw SQL (matches blueprint query)
-  const candidates = await prisma.$queryRaw`
-    SELECT
-      i.id AS inventory_id,
-      i.current_price,
-      i.last_markdown_at,
-      i.variant_id,
-      i.location_id,
-      i.tenant_id,
-      p.msrp_price,
-      p.model AS product_model,
-      b.name AS brand_name,
-      pv.sku,
-      EXTRACT(DAY FROM NOW() - COALESCE(i.last_sold_at, i.received_at)) AS days_without_sale
-    FROM inventory i
-    JOIN product_variants pv ON pv.id = i.variant_id
-    JOIN products p ON p.id = pv.product_id
-    JOIN brands b ON b.id = p.brand_id
-    WHERE i.on_hand > 0
-      AND p.exclude_from_markdown = false
-      AND p.is_active = true
-      AND EXTRACT(DAY FROM NOW() - COALESCE(i.last_sold_at, i.received_at)) > ${thresholdDays}
-      AND (
-        i.last_markdown_at IS NULL
-        OR EXTRACT(HOUR FROM NOW() - i.last_markdown_at) >= ${intervalHours}
-      )
-      AND i.current_price > (p.msrp_price * ${priceFloorPercent} / 100)
-    ORDER BY days_without_sale DESC
-  `;
+  const thresholdDate = new Date(Date.now() - thresholdDays * 24 * 60 * 60 * 1000);
+  const intervalDate = new Date(Date.now() - intervalHours * 60 * 60 * 1000);
+
+  // Find dead stock candidates using Prisma ORM
+  const candidates = await prisma.inventory.findMany({
+    where: {
+      onHand: { gt: 0 },
+      variant: {
+        product: {
+          excludeFromMarkdown: false,
+          isActive: true,
+        },
+      },
+      OR: [
+        { lastSoldAt: { lt: thresholdDate } },
+        {
+          lastSoldAt: null,
+          receivedAt: { lt: thresholdDate },
+        },
+      ],
+      AND: [
+        {
+          OR: [
+            { lastMarkdownAt: null },
+            { lastMarkdownAt: { lt: intervalDate } },
+          ],
+        },
+      ],
+    },
+    include: {
+      variant: {
+        include: {
+          product: {
+            include: {
+              brand: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
 
   let markedDown = 0;
 
   for (const item of candidates) {
-    const currentPrice = Number(item.current_price);
-    const msrpPrice = Number(item.msrp_price);
+    const currentPrice = item.currentPrice;
+    const msrpPrice = item.variant.product.msrpPrice;
     const priceFloor = Math.floor(msrpPrice * priceFloorPercent / 100);
+
+    // Skip items already at or below price floor
+    if (currentPrice <= priceFloor) continue;
 
     // Calculate new price: reduce by markdownPercent
     let newPrice = Math.floor(currentPrice * (1 - markdownPercent / 100));
@@ -68,10 +83,14 @@ async function runDeadStockDecay() {
     // Skip if price wouldn't change
     if (newPrice >= currentPrice) continue;
 
+    const daysSinceLastSale = Math.floor(
+      (Date.now() - (item.lastSoldAt || item.receivedAt).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
     await prisma.$transaction(async (tx) => {
       // Update inventory price
       await tx.inventory.update({
-        where: { id: item.inventory_id },
+        where: { id: item.id },
         data: {
           currentPrice: newPrice,
           lastMarkdownAt: new Date(),
@@ -81,19 +100,19 @@ async function runDeadStockDecay() {
       // Record in price history
       await tx.priceHistory.create({
         data: {
-          tenantId: item.tenant_id,
-          variantId: item.variant_id,
-          locationId: item.location_id,
+          tenantId: item.tenantId,
+          variantId: item.variantId,
+          locationId: item.locationId,
           oldPrice: currentPrice,
           newPrice: newPrice,
-          reason: `dead_stock_decay (${item.days_without_sale} days without sale)`,
+          reason: `dead_stock_decay (${daysSinceLastSale} days without sale)`,
         },
       });
     });
 
     markedDown++;
     logger.info(
-      { sku: item.sku, oldPrice: currentPrice, newPrice, daysWithoutSale: Number(item.days_without_sale) },
+      { sku: item.variant.sku, oldPrice: currentPrice, newPrice, daysWithoutSale: daysSinceLastSale },
       'Applied dead stock markdown'
     );
   }

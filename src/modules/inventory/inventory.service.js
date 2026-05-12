@@ -130,25 +130,24 @@ class InventoryService {
   }
 
   async adjustStock(tenantId, data, userId) {
-    // Use interactive transaction with SELECT FOR UPDATE to prevent race conditions
     return prisma.$transaction(async (tx) => {
-      // Lock the inventory row
-      const [inventory] = await tx.$queryRaw`
-        SELECT * FROM inventory
-        WHERE variant_id = ${data.variantId}
-          AND location_id = ${data.locationId}
-          AND tenant_id = ${tenantId}
-        FOR UPDATE
-      `;
+      // Find the inventory record
+      const inventory = await tx.inventory.findFirst({
+        where: {
+          variantId: data.variantId,
+          locationId: data.locationId,
+          tenantId,
+        },
+      });
 
       if (!inventory) {
         throw new NotFoundError('Inventory record');
       }
 
-      const newOnHand = inventory.on_hand + data.adjustment;
+      const newOnHand = inventory.onHand + data.adjustment;
       if (newOnHand < 0) {
         throw new ConflictError('Adjustment would result in negative stock', {
-          currentOnHand: inventory.on_hand,
+          currentOnHand: inventory.onHand,
           adjustment: data.adjustment,
         });
       }
@@ -166,13 +165,13 @@ class InventoryService {
           action: 'ADJUST_STOCK',
           entity: 'inventory',
           entityId: inventory.id,
-          oldValue: { onHand: inventory.on_hand },
+          oldValue: { onHand: inventory.onHand },
           newValue: { onHand: newOnHand, reason: data.reason, adjustment: data.adjustment },
         },
       });
 
       return updated;
-    });
+    }, { isolationLevel: 'Serializable' });
   }
 }
 
