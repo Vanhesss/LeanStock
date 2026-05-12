@@ -13,10 +13,21 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
- * Send email asynchronously (fire-and-forget).
- * Does not block the caller — logs errors instead of throwing.
+ * Send email asynchronously via BullMQ queue.
+ * The API endpoint does NOT block waiting for the email service to respond.
  */
 function sendEmail({ to, subject, html }) {
+  // Lazy-require to avoid circular dependency
+  const { emailQueue } = require('./queue');
+  emailQueue.add('send-email', { to, subject, html }).catch((err) => {
+    logger.error({ error: err.message, to, subject }, 'Failed to enqueue email');
+  });
+}
+
+/**
+ * Actually send email via SMTP (called by the email worker).
+ */
+async function deliverEmail({ to, subject, html }) {
   const mailOptions = {
     from: `"LeanStock" <${env.SMTP_FROM}>`,
     to,
@@ -24,12 +35,9 @@ function sendEmail({ to, subject, html }) {
     html,
   };
 
-  // Fire-and-forget: don't await, just log result
-  transporter.sendMail(mailOptions).then((info) => {
-    logger.info({ messageId: info.messageId, to }, 'Email sent');
-  }).catch((error) => {
-    logger.error({ error: error.message, to, subject }, 'Email send failed');
-  });
+  const info = await transporter.sendMail(mailOptions);
+  logger.info({ messageId: info.messageId, to }, 'Email delivered');
+  return info;
 }
 
-module.exports = { sendEmail, transporter };
+module.exports = { sendEmail, deliverEmail, transporter };

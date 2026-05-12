@@ -13,6 +13,7 @@ const inventoryRoutes = require('./modules/inventory/inventory.routes');
 const transfersRoutes = require('./modules/transfers/transfers.routes');
 const salesRoutes = require('./modules/sales/sales.routes');
 const reservationsRoutes = require('./modules/reservations/reservations.routes');
+const adminRoutes = require('./modules/admin/admin.routes');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/v1/inventory', inventoryRoutes);
 app.use('/api/v1/transfers', transfersRoutes);
 app.use('/api/v1/sales', salesRoutes);
 app.use('/api/v1/reservations', reservationsRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // ──────────── 404 handler ────────────
 app.use((_req, res) => {
