@@ -1,7 +1,7 @@
 # LeanStock — Inventory Management System
 
 > Production-grade inventory management system for a multi-location sneaker retail chain.  
-> Built with **Express.js**, **Prisma ORM**, **PostgreSQL**, and **Redis**.
+> Built with **Express.js**, **Prisma ORM**, **PostgreSQL**, **Redis**, and **BullMQ**.
 
 ---
 
@@ -11,6 +11,7 @@
 # 1. Clone and install
 git clone <repo-url>
 cd leanstock
+npm install
 cp .env.example .env    # fill in SMTP credentials for email
 
 # 2. Start infrastructure
@@ -53,17 +54,20 @@ All seeded users have verified emails.
 | Layer          | Technology                                         |
 |----------------|----------------------------------------------------|
 | Framework      | Express.js 4 + JavaScript (ES2022)                 |
-| ORM            | Prisma 5 (zero raw SQL except `SELECT FOR UPDATE`) |
-| Database       | PostgreSQL 16 (ACID transactions, row-level locking) |
-| Cache          | Redis 7 (rate limiting, JWT blacklist)             |
+| ORM            | Prisma 5 (pure ORM, zero raw SQL)                  |
+| Database       | PostgreSQL 16 (ACID transactions, Serializable isolation) |
+| Cache          | Redis 7 (rate limiting, JWT blacklist, job queues) |
+| Job Queue      | BullMQ (Redis-backed background workers)           |
+| Scheduling     | node-cron → BullMQ (dead stock 6h, reservation expiry 1h) |
 | Validation     | Zod schemas on all request bodies                  |
 | Auth           | JWT access/refresh tokens + bcrypt + RBAC          |
-| Email          | Nodemailer (async, non-blocking)                   |
-| Scheduling     | node-cron (dead stock decay 6h, reservation expiry 1h) |
+| Email          | Nodemailer via BullMQ queue (async, non-blocking)  |
+| API Docs       | Swagger UI at `/docs` (OpenAPI 3.0)                |
+| Testing        | Jest + Supertest                                   |
 
 ---
 
-## API Endpoints
+## API Endpoints (28 total)
 
 ### Auth
 
@@ -92,9 +96,9 @@ All seeded users have verified emails.
 |--------|-----------------------------|------------------------------------|---------|
 | GET    | `/api/v1/inventory`         | List inventory at location         | All     |
 | POST   | `/api/v1/inventory/receive` | Receive stock shipment             | Manager |
-| POST   | `/api/v1/inventory/adjust`  | Adjust stock (SELECT FOR UPDATE)   | Manager |
+| POST   | `/api/v1/inventory/adjust`  | Adjust stock (Serializable txn)    | Manager |
 
-### Transfers
+### Transfers (State Machine: PENDING → APPROVED → IN_TRANSIT → COMPLETED)
 
 | Method | Endpoint                            | Description                          | Access  |
 |--------|-------------------------------------|--------------------------------------|---------|
@@ -111,7 +115,7 @@ All seeded users have verified emails.
 |--------|----------------------|----------------------------------------|--------|
 | GET    | `/api/v1/sales`      | List sales (date/location filtering)   | All    |
 | GET    | `/api/v1/sales/:id`  | Get sale details                       | All    |
-| POST   | `/api/v1/sales`      | Record sale (SELECT FOR UPDATE)        | All    |
+| POST   | `/api/v1/sales`      | Record sale (Serializable stock lock)  | All    |
 
 ### Reservations
 
@@ -121,6 +125,21 @@ All seeded users have verified emails.
 | POST   | `/api/v1/reservations`                | Create reservation (lock stock)| All    |
 | PATCH  | `/api/v1/reservations/:id/cancel`     | Cancel and release stock       | All    |
 | PATCH  | `/api/v1/reservations/:id/convert`    | Convert to sale                | All    |
+
+### Admin (ADMIN role required)
+
+| Method | Endpoint                               | Description                     |
+|--------|-----------------------------------------|---------------------------------|
+| GET    | `/api/v1/admin/users`                  | List users                       |
+| GET    | `/api/v1/admin/locations`              | List locations                   |
+| POST   | `/api/v1/admin/locations`              | Create location                  |
+| GET    | `/api/v1/admin/brands`                 | List brands                      |
+| POST   | `/api/v1/admin/brands`                 | Create brand                     |
+| GET    | `/api/v1/admin/audit-logs`             | View audit logs                  |
+| GET    | `/api/v1/admin/price-history`          | View price markdown history      |
+| GET    | `/api/v1/admin/queues`                 | Background job queue status      |
+| POST   | `/api/v1/admin/jobs/dead-stock-decay`  | Trigger dead stock decay job     |
+| POST   | `/api/v1/admin/jobs/reservation-expiry`| Trigger reservation expiry job   |
 
 ### System
 
@@ -133,33 +152,49 @@ All seeded users have verified emails.
 
 ## Email Notifications
 
-The system sends real emails via SMTP for these business events:
+All emails are sent asynchronously via BullMQ queue — the API never blocks on SMTP.
 
-1. **Verification email** — on user registration
-2. **Password reset** — on forgot-password request
-3. **Sale confirmation** — when a sale is recorded
-4. **Reservation created** — when a reservation is made
-5. **Transfer shipped** — when a transfer moves to IN_TRANSIT
-
-Emails are sent asynchronously (fire-and-forget) and never block the API response.
+| Event                | Trigger                         | Recipient        |
+|----------------------|---------------------------------|------------------|
+| Verification email   | User registration               | New user         |
+| Password reset       | Forgot-password request         | User             |
+| Sale confirmation    | Sale recorded                   | Staff who sold   |
+| Reservation created  | Reservation made                | Staff who reserved |
+| Transfer shipped     | Transfer moves to IN_TRANSIT    | Requesting manager |
 
 ---
 
-## Background Jobs
+## Background Workers & Queue
 
-| Job                   | Schedule    | Description                                    |
-|-----------------------|-------------|------------------------------------------------|
-| Dead stock decay      | Every 6h    | Markdown stale inventory by configurable %     |
-| Reservation expiry    | Every 1h    | Expire overdue reservations, release stock     |
+All background processing uses **BullMQ** with Redis-backed queues.
 
-All job parameters are configurable via environment variables.
+| Queue               | Worker             | Schedule       | Description                                    |
+|---------------------|--------------------|----------------|------------------------------------------------|
+| `email`             | Email Worker       | Immediate      | Sends emails via SMTP (concurrency: 3)         |
+| `dead-stock-decay`  | Dead Stock Worker  | Every 6h       | Markdown stale inventory by configurable %     |
+| `reservation-expiry`| Expiry Worker      | Every 1h       | Expire overdue reservations, release stock     |
+
+### Queue Visibility
+
+- `GET /api/v1/admin/queues` — returns `{ completed, failed, waiting, active, delayed }` per queue
+- `POST /api/v1/admin/jobs/dead-stock-decay` — manually trigger dead stock decay
+- `POST /api/v1/admin/jobs/reservation-expiry` — manually trigger reservation expiry
+
+### Dead Stock Decay Parameters (env vars)
+
+| Variable                       | Default | Description                    |
+|--------------------------------|---------|--------------------------------|
+| `DEAD_STOCK_THRESHOLD_DAYS`    | 30      | Days without sale to qualify   |
+| `DEAD_STOCK_MARKDOWN_PERCENT`  | 10      | Discount percentage per cycle  |
+| `DEAD_STOCK_INTERVAL_HOURS`    | 72      | Min hours between markdowns    |
+| `DEAD_STOCK_PRICE_FLOOR_PERCENT`| 40     | Price floor as % of MSRP       |
 
 ---
 
 ## Testing
 
 ```bash
-# Unit tests (no database needed) — 63 tests
+# Unit tests (no database needed) — 116 tests across 10 suites
 npm run test:unit
 
 # Integration tests (requires running postgres + redis)
@@ -173,10 +208,14 @@ npm test
 
 ## Environment Variables
 
-See `.env.example` for all required variables. Key additions:
+See `.env.example` for all required variables. Key ones:
 
 | Variable    | Purpose                              |
 |-------------|--------------------------------------|
+| DATABASE_URL| PostgreSQL connection string          |
+| REDIS_URL   | Redis connection string               |
+| JWT_ACCESS_SECRET  | JWT signing secret (min 32 chars)  |
+| JWT_REFRESH_SECRET | JWT refresh secret (min 32 chars)  |
 | SMTP_HOST   | Email server hostname                |
 | SMTP_PORT   | Email server port (587 for TLS)      |
 | SMTP_USER   | Email account username               |
@@ -190,15 +229,17 @@ See `.env.example` for all required variables. Key additions:
 
 ```
 src/
-├── config/          # env validation, prisma, redis, email
+├── config/          # env validation, prisma, redis, email, queue (BullMQ)
 ├── middleware/      # authenticate, authorize, rateLimiter, validate, errorHandler
 ├── modules/
 │   ├── auth/        # login, register, verify-email, forgot/reset-password
 │   ├── products/    # CRUD with tenant_id filtering
-│   ├── inventory/   # receive, adjust (SELECT FOR UPDATE)
+│   ├── inventory/   # receive, adjust (Serializable isolation)
 │   ├── transfers/   # state machine with atomic stock operations
 │   ├── sales/       # record sales with stock locking
-│   └── reservations/# create, cancel, convert with stock reservation
-├── jobs/            # dead stock decay, reservation expiry (node-cron)
+│   ├── reservations/# create, cancel, convert with stock reservation
+│   └── admin/       # users, locations, brands, audit logs, price history, queues
+├── jobs/            # cron schedules → BullMQ queue dispatch
+├── workers/         # BullMQ workers: email, dead stock, reservation expiry
 └── utils/           # errors, logger, pagination, emailTemplates
 ```
