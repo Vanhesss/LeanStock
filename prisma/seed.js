@@ -31,6 +31,13 @@ function randomBetween(min, max) {
 async function main() {
   console.log('Seeding database...');
 
+  // Skip if already seeded
+  const existingLocations = await prisma.location.findMany({ where: { tenantId: TENANT_ID } });
+  if (existingLocations.length > 0) {
+    console.log('Database already seeded, skipping.');
+    return;
+  }
+
   // --- Locations ---
   const locations = await Promise.all([
     prisma.location.create({
