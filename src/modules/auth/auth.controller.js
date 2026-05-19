@@ -45,8 +45,18 @@ class AuthController {
 
   async verifyEmail(req, res, next) {
     try {
-      const { token } = req.body;
-      const result = await authService.verifyEmail(token);
+      const { email, code } = req.body;
+      const result = await authService.verifyEmail(email, code);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resendVerification(req, res, next) {
+    try {
+      const { email } = req.body;
+      const result = await authService.resendVerificationCode(email);
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       next(error);

@@ -61,7 +61,7 @@ async function main() {
   // --- Users ---
   const hashedPass = await bcrypt.hash('Password123!', 12);
 
-  const [adminUser, managerMega, managerDostyk, managerKeruen, staffMega, staffDostyk, staffKeruen] = await Promise.all([
+  const [adminUser, managerMega, managerDostyk, managerKeruen, staffMega, staffDostyk, staffKeruen, testUser] = await Promise.all([
     prisma.user.create({
       data: { tenantId: TENANT_ID, email: 'admin@leanstock.kz', password: hashedPass, firstName: 'Arman', lastName: 'Bekturov', role: 'ADMIN', isEmailVerified: true },
     }),
@@ -82,6 +82,18 @@ async function main() {
     }),
     prisma.user.create({
       data: { tenantId: TENANT_ID, email: 'staff.keruen@leanstock.kz', password: hashedPass, firstName: 'Timur', lastName: 'Zhanbolatov', role: 'STAFF', locationId: LOC_KERUEN, isEmailVerified: true },
+    }),
+    prisma.user.create({
+      data: { tenantId: TENANT_ID, email: 'abbror2006@gmail.com', password: hashedPass, firstName: 'Abbror', lastName: 'Test', role: 'ADMIN', isEmailVerified: false },
+    }),
+    prisma.user.create({
+      data: { tenantId: TENANT_ID, email: 'kanevskiy00@gmail.com', password: hashedPass, firstName: 'Ivan', lastName: 'Kanevskiy', role: 'ADMIN', isEmailVerified: false },
+    }),
+    prisma.user.create({
+      data: { tenantId: TENANT_ID, email: 'ivankanevskii@narxoz.kz', password: hashedPass, firstName: 'Ivan', lastName: 'Kanevskiy', role: 'MANAGER', locationId: LOC_MEGA, isEmailVerified: false },
+    }),
+    prisma.user.create({
+      data: { tenantId: TENANT_ID, email: 'kanevskiy.work@mail.ru', password: hashedPass, firstName: 'Ivan', lastName: 'Kanevskiy', role: 'STAFF', locationId: LOC_DOSTYK, isEmailVerified: false },
     }),
   ]);
 
@@ -417,6 +429,7 @@ async function main() {
   console.log('Admin:           admin@leanstock.kz / Password123!');
   console.log('Manager (Mega):  manager@leanstock.kz / Password123!');
   console.log('Staff (Mega):    staff@leanstock.kz / Password123!');
+  console.log('Test (unverified): abbror2006@gmail.com / Password123!');
 }
 
 main()

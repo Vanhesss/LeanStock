@@ -38,7 +38,12 @@ const resetPasswordSchema = z.object({
 });
 
 const verifyEmailSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
+  email: z.string().email('Invalid email format'),
+  code: z.string().length(6, 'Code must be 6 digits'),
 });
 
-module.exports = { loginSchema, refreshSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema };
+const resendVerificationSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
+module.exports = { loginSchema, refreshSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, resendVerificationSchema };

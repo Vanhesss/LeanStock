@@ -24,6 +24,12 @@ export default function LoginPage() {
       toast.success('Welcome back!')
       navigate('/dashboard')
     } catch (err) {
+      const errorCode = err.response?.data?.error?.code
+      if (errorCode === 'EMAIL_NOT_VERIFIED') {
+        toast('Verification code sent to your email', { icon: '\u2709\uFE0F' })
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`)
+        return
+      }
       toast.error(err.response?.data?.error?.message || 'Login failed')
     } finally {
       setLoading(false)

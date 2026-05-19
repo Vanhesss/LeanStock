@@ -22,7 +22,22 @@ class AuthService {
     }
 
     if (!user.isEmailVerified) {
-      throw new UnauthorizedError('Please verify your email before logging in');
+      // Send a new verification code automatically
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const codeExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerificationToken: code,
+          emailVerificationExpires: codeExpires,
+        },
+      });
+
+      const emailContent = verificationEmail(user.firstName, code);
+      sendEmail({ to: user.email, ...emailContent });
+
+      throw new AppError(403, 'EMAIL_NOT_VERIFIED', 'Please verify your email before logging in');
     }
 
     const tokens = this.generateTokens({
@@ -76,11 +91,8 @@ class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 12);
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
-
-    // When an admin creates the user, auto-verify email (admin vouches for them)
-    const autoVerify = !!adminTenantId;
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
     const user = await prisma.user.create({
       data: {
@@ -91,9 +103,9 @@ class AuthService {
         lastName: data.lastName,
         role: data.role,
         locationId: data.locationId || null,
-        isEmailVerified: autoVerify,
-        emailVerificationToken: autoVerify ? null : verificationToken,
-        emailVerificationExpires: autoVerify ? null : verificationExpires,
+        isEmailVerified: false,
+        emailVerificationToken: verificationCode,
+        emailVerificationExpires: verificationExpires,
       },
       select: {
         id: true,
@@ -108,8 +120,8 @@ class AuthService {
       },
     });
 
-    // Send verification email (async, non-blocking)
-    const emailContent = verificationEmail(data.firstName, verificationToken);
+    // Send verification email with 6-digit code
+    const emailContent = verificationEmail(data.firstName, verificationCode);
     sendEmail({ to: data.email, ...emailContent });
 
     return user;
@@ -190,16 +202,19 @@ class AuthService {
     }
   }
 
-  async verifyEmail(token) {
-    const user = await prisma.user.findFirst({
-      where: {
-        emailVerificationToken: token,
-        emailVerificationExpires: { gt: new Date() },
-      },
-    });
+  async verifyEmail(email, code) {
+    const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      throw new AppError(400, 'INVALID_TOKEN', 'Invalid or expired verification token');
+      throw new AppError(400, 'INVALID_CODE', 'Invalid or expired verification code');
+    }
+
+    if (
+      user.emailVerificationToken !== code ||
+      !user.emailVerificationExpires ||
+      user.emailVerificationExpires < new Date()
+    ) {
+      throw new AppError(400, 'INVALID_CODE', 'Invalid or expired verification code');
     }
 
     await prisma.user.update({
@@ -212,6 +227,35 @@ class AuthService {
     });
 
     return { message: 'Email verified successfully' };
+  }
+
+  async resendVerificationCode(email) {
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user || !user.isActive) {
+      // Don't reveal whether user exists
+      return { message: 'If the account exists, a new code has been sent' };
+    }
+
+    if (user.isEmailVerified) {
+      return { message: 'Email is already verified' };
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationToken: code,
+        emailVerificationExpires: codeExpires,
+      },
+    });
+
+    const emailContent = verificationEmail(user.firstName, code);
+    sendEmail({ to: email, ...emailContent });
+
+    return { message: 'If the account exists, a new code has been sent' };
   }
 
   async forgotPassword(email) {

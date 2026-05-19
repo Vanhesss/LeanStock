@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext'
 import AppLayout from './components/layout/AppLayout'
 import WelcomePage from './pages/WelcomePage'
 import LoginPage from './pages/LoginPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 import DashboardPage from './pages/DashboardPage'
 import ProductsPage from './pages/ProductsPage'
 import InventoryPage from './pages/InventoryPage'
@@ -55,6 +56,7 @@ export default function App() {
       {/* Public routes */}
       <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <WelcomePage />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       {/* Protected routes */}
       <Route

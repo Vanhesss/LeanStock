@@ -22,6 +22,11 @@ services:
       RESERVATION_TTL_HOURS: 24
       CORS_ORIGIN: "*"
       DEFAULT_TENANT_ID: 00000000-0000-0000-0000-000000000001
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
+      GMAIL_USER: ${GMAIL_USER}
+      APP_URL: http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy

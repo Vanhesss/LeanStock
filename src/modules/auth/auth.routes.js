@@ -4,7 +4,7 @@ const { validate } = require('../../middleware/validate');
 const { authenticate } = require('../../middleware/authenticate');
 const { authorize } = require('../../middleware/authorize');
 const { rateLimiter } = require('../../middleware/rateLimiter');
-const { loginSchema, refreshSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema } = require('./auth.schema');
+const { loginSchema, refreshSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, resendVerificationSchema } = require('./auth.schema');
 
 const router = Router();
 
@@ -20,8 +20,11 @@ router.post(
   authController.register
 );
 
-// POST /auth/verify-email — public
-router.post('/verify-email', validate(verifyEmailSchema), authController.verifyEmail);
+// POST /auth/verify-email — public, rate limited
+router.post('/verify-email', rateLimiter(), validate(verifyEmailSchema), authController.verifyEmail);
+
+// POST /auth/resend-verification — public, rate limited
+router.post('/resend-verification', rateLimiter(), validate(resendVerificationSchema), authController.resendVerification);
 
 // POST /auth/forgot-password — public, rate limited
 router.post('/forgot-password', rateLimiter(), validate(forgotPasswordSchema), authController.forgotPassword);

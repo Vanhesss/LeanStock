@@ -1,15 +1,17 @@
 const { env } = require('../config/env');
 
-function verificationEmail(firstName, token) {
-  const link = `${env.APP_URL}/api/v1/auth/verify-email?token=${token}`;
+function verificationEmail(firstName, code) {
   return {
-    subject: 'Verify your LeanStock account',
+    subject: `${code} — Your LeanStock verification code`,
     html: `
-      <h2>Welcome to LeanStock, ${firstName}!</h2>
-      <p>Please verify your email address by clicking the link below:</p>
-      <p><a href="${link}" style="padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">Verify Email</a></p>
-      <p>Or copy this link: ${link}</p>
-      <p>This link expires in 24 hours.</p>
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1e293b;margin-bottom:8px;">Welcome to LeanStock, ${firstName}!</h2>
+        <p style="color:#475569;">Enter this code to verify your email address:</p>
+        <div style="text-align:center;margin:32px 0;">
+          <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#2563eb;background:#eff6ff;padding:16px 32px;border-radius:12px;display:inline-block;">${code}</span>
+        </div>
+        <p style="color:#64748b;font-size:14px;">This code expires in 15 minutes. If you didn't create a LeanStock account, you can safely ignore this email.</p>
+      </div>
     `,
   };
 }
