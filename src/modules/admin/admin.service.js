@@ -171,7 +171,17 @@ class AdminService {
     const queues = getQueues();
     const status = {};
     for (const [name, queue] of Object.entries(queues)) {
-      status[name] = await queue.getJobCounts();
+      const counts = await queue.getJobCounts();
+      const failedJobs = await queue.getJobs(['failed'], 0, 5);
+      status[name] = {
+        ...counts,
+        recentErrors: failedJobs.map((j) => ({
+          id: j.id,
+          failedReason: j.failedReason,
+          data: { to: j.data?.to, subject: j.data?.subject },
+          timestamp: j.timestamp,
+        })),
+      };
     }
     return status;
   }
