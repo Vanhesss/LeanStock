@@ -49,6 +49,8 @@ export default function AdminPage() {
   const [showModal, setShowModal] = useState(false)
   const [locForm, setLocForm] = useState({ name: '', type: 'STORE', address: '', city: '' })
   const [brandForm, setBrandForm] = useState({ name: '' })
+  const [userForm, setUserForm] = useState({ email: '', password: '', firstName: '', lastName: '', role: 'STAFF', locationId: '' })
+  const [locations, setLocations] = useState([])
 
   const endpoints = {
     users: '/admin/users',
@@ -75,6 +77,10 @@ export default function AdminPage() {
   }
 
   useEffect(() => { load() }, [tab])
+
+  useEffect(() => {
+    api.get('/locations').then(({ data: res }) => setLocations(res.data || [])).catch(() => {})
+  }, [])
 
   const priceChartData = useMemo(() => {
     if (tab !== 'prices' || !data.length) return []
@@ -108,6 +114,21 @@ export default function AdminPage() {
       load()
     } catch (err) {
       toast.error(err.response?.data?.error?.message || 'Failed')
+    }
+  }
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault()
+    try {
+      const payload = { ...userForm }
+      if (!payload.locationId) delete payload.locationId
+      await api.post('/auth/register', payload)
+      toast.success(`User ${userForm.email} created! Verification code sent.`)
+      setShowModal(false)
+      setUserForm({ email: '', password: '', firstName: '', lastName: '', role: 'STAFF', locationId: '' })
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to create user')
     }
   }
 
@@ -210,7 +231,7 @@ export default function AdminPage() {
               <Card hover={false}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-white font-semibold capitalize">{tab}</h3>
-                  {(tab === 'locations' || tab === 'brands') && (
+                  {(tab === 'users' || tab === 'locations' || tab === 'brands') && (
                     <Button size="sm" onClick={() => setShowModal(true)}>
                       <Plus size={16} /> Add
                     </Button>
@@ -309,6 +330,40 @@ export default function AdminPage() {
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
             <Button type="submit" className="flex-1">Create</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Create User Modal */}
+      <Modal open={showModal && tab === 'users'} onClose={() => setShowModal(false)} title="Register New User">
+        <form onSubmit={handleCreateUser} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="First Name" value={userForm.firstName} onChange={(e) => setUserForm({ ...userForm, firstName: e.target.value })} placeholder="Ivan" required />
+            <Input label="Last Name" value={userForm.lastName} onChange={(e) => setUserForm({ ...userForm, lastName: e.target.value })} placeholder="Kanevskiy" required />
+          </div>
+          <Input label="Email" type="email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} placeholder="user@example.com" required />
+          <Input label="Password" type="password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} placeholder="Min 8 chars, uppercase, lowercase, number" required />
+          <div>
+            <label className="block text-sm font-medium text-surface-300 mb-1.5">Role</label>
+            <select value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+              <option value="ADMIN" className="bg-surface-900">Admin</option>
+              <option value="MANAGER" className="bg-surface-900">Manager</option>
+              <option value="STAFF" className="bg-surface-900">Staff</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-300 mb-1.5">Location (optional)</label>
+            <select value={userForm.locationId} onChange={(e) => setUserForm({ ...userForm, locationId: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+              <option value="" className="bg-surface-900">None</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id} className="bg-surface-900">{loc.name} ({loc.type})</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-surface-500">A 6-digit verification code will be sent to the user's email.</p>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
+            <Button type="submit" className="flex-1">Register User</Button>
           </div>
         </form>
       </Modal>

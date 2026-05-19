@@ -19,7 +19,7 @@ const registerSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number'),
   firstName: z.string().min(1, 'First name is required').max(100),
   lastName: z.string().min(1, 'Last name is required').max(100),
-  role: z.enum(['MANAGER', 'STAFF']),
+  role: z.enum(['ADMIN', 'MANAGER', 'STAFF']),
   locationId: z.string().uuid().optional(),
 });
 
