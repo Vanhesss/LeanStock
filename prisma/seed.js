@@ -90,7 +90,7 @@ async function main() {
       data: { tenantId: TENANT_ID, email: 'kanevskiy00@gmail.com', password: hashedPass, firstName: 'Ivan', lastName: 'Kanevskiy', role: 'ADMIN', isEmailVerified: false },
     }),
     prisma.user.create({
-      data: { tenantId: TENANT_ID, email: 'ivankanevskii@narxoz.kz', password: hashedPass, firstName: 'Ivan', lastName: 'Kanevskiy', role: 'MANAGER', locationId: LOC_MEGA, isEmailVerified: false },
+      data: { tenantId: TENANT_ID, email: 'ivan.kanevskii@narxoz.kz', password: hashedPass, firstName: 'Ivan', lastName: 'Kanevskiy', role: 'MANAGER', locationId: LOC_MEGA, isEmailVerified: false },
     }),
     prisma.user.create({
       data: { tenantId: TENANT_ID, email: 'kanevskiy.work@mail.ru', password: hashedPass, firstName: 'Ivan', lastName: 'Kanevskiy', role: 'STAFF', locationId: LOC_DOSTYK, isEmailVerified: false },
