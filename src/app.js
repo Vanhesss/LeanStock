@@ -44,10 +44,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// ──────────── Root redirect to docs ────────────
-app.get('/', (_req, res) => {
-  res.redirect('/docs')
-})
+// ──────────── Serve frontend static files ────────────
+app.use(express.static(path.join(__dirname, '..', 'public')))
 
 // ──────────── API Routes ────────────
 app.use('/api/v1/auth', authRoutes)
@@ -72,12 +70,17 @@ app.get('/api/v1/locations', authenticate, async (req, res, next) => {
   }
 })
 
-// ──────────── 404 handler ────────────
-app.use((_req, res) => {
+// ──────────── API 404 handler ────────────
+app.use('/api', (_req, res) => {
   res.status(404).json({
     success: false,
     error: { code: 'NOT_FOUND', message: 'Route not found' },
   })
+})
+
+// ──────────── SPA fallback — serve index.html for non-API routes ────────────
+app.use((_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'))
 })
 
 // ──────────── Error Handler ────────────
