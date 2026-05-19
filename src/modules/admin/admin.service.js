@@ -173,8 +173,8 @@ class AdminService {
     return {
       GMAIL_USER: env.GMAIL_USER || '(empty)',
       GMAIL_CLIENT_ID: mask(env.GMAIL_CLIENT_ID),
-      GMAIL_CLIENT_KEY: mask(env.GMAIL_CLIENT_KEY),
-      GMAIL_REFRESH_CREDENTIAL: mask(env.GMAIL_REFRESH_CREDENTIAL),
+      GMAIL_CS: mask(env.GMAIL_CS),
+      GMAIL_RT: mask(env.GMAIL_RT),
     };
   }
 
