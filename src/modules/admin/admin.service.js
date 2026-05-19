@@ -166,6 +166,18 @@ class AdminService {
     return { data: items, meta: buildPaginationMeta(items, total, limit) };
   }
 
+  // ──────────── Email Config Diagnostic ────────────
+  getEmailConfig() {
+    const { env } = require('../../config/env');
+    const mask = (s) => (s ? `${s.slice(0, 6)}...${s.slice(-4)}` : '(empty)');
+    return {
+      GMAIL_USER: env.GMAIL_USER || '(empty)',
+      GMAIL_CLIENT_ID: mask(env.GMAIL_CLIENT_ID),
+      GMAIL_CLIENT_KEY: mask(env.GMAIL_CLIENT_KEY),
+      GMAIL_REFRESH_CREDENTIAL: mask(env.GMAIL_REFRESH_CREDENTIAL),
+    };
+  }
+
   // ──────────── Queue / Jobs ────────────
   async getQueueStatus() {
     const queues = getQueues();

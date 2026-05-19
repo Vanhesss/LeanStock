@@ -35,6 +35,9 @@ router.get('/audit-logs', validate(auditLogsQuerySchema, 'query'), adminControll
 // ──────────── Price History ────────────
 router.get('/price-history', validate(priceHistoryQuerySchema, 'query'), adminController.listPriceHistory);
 
+// ──────────── Email Config Diagnostic ────────────
+router.get('/email-config', adminController.getEmailConfig);
+
 // ──────────── Queue / Background Jobs ────────────
 router.get('/queues', adminController.getQueueStatus);
 router.post('/jobs/dead-stock-decay', adminController.triggerDeadStockDecay);

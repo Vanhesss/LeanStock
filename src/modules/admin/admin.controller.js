@@ -64,6 +64,15 @@ class AdminController {
     }
   }
 
+  async getEmailConfig(req, res, next) {
+    try {
+      const config = adminService.getEmailConfig();
+      res.json({ success: true, data: config });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getQueueStatus(req, res, next) {
     try {
       const status = await adminService.getQueueStatus();
