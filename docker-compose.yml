@@ -1,12 +1,10 @@
-version: "3.9"
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -22,13 +20,23 @@ services:
       DEAD_STOCK_INTERVAL_HOURS: 72
       DEAD_STOCK_PRICE_FLOOR_PERCENT: 40
       RESERVATION_TTL_HOURS: 24
-      CORS_ORIGIN: http://localhost:3000
+      CORS_ORIGIN: http://localhost:5173
       DEFAULT_TENANT_ID: 00000000-0000-0000-0000-000000000001
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - app
     restart: unless-stopped
 
   postgres:

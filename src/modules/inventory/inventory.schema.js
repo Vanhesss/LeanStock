@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const inventoryQuerySchema = z.object({
-  locationId: z.string().uuid(),
+  locationId: z.string().uuid().optional(),
   search: z.string().optional(),
   lowStock: z.enum(['true', 'false']).optional(),
   cursor: z.string().optional(),

@@ -79,6 +79,9 @@ class AuthService {
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
+    // When an admin creates the user, auto-verify email (admin vouches for them)
+    const autoVerify = !!adminTenantId;
+
     const user = await prisma.user.create({
       data: {
         tenantId: adminTenantId,
@@ -88,9 +91,9 @@ class AuthService {
         lastName: data.lastName,
         role: data.role,
         locationId: data.locationId || null,
-        isEmailVerified: false,
-        emailVerificationToken: verificationToken,
-        emailVerificationExpires: verificationExpires,
+        isEmailVerified: autoVerify,
+        emailVerificationToken: autoVerify ? null : verificationToken,
+        emailVerificationExpires: autoVerify ? null : verificationExpires,
       },
       select: {
         id: true,

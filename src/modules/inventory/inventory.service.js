@@ -6,7 +6,8 @@ class InventoryService {
   async list(tenantId, query) {
     const { cursor, limit } = parsePagination(query);
     const cursorObj = cursor ? decodeCursor(cursor) : null;
-    const filters = [{ tenantId }, { locationId: query.locationId }];
+    const filters = [{ tenantId }];
+    if (query.locationId) filters.push({ locationId: query.locationId });
 
     if (query.lowStock === 'true') {
       filters.push({ onHand: { lt: 3 } });
