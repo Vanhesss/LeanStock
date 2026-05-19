@@ -54,8 +54,8 @@ const envSchema = z.object({
 
   // Gmail OAuth2
   GMAIL_CLIENT_ID: z.string().default(''),
-  GMAIL_CLIENT_SECRET: z.string().default(''),
-  GMAIL_REFRESH_TOKEN: z.string().default(''),
+  GMAIL_CLIENT_KEY: z.string().default(''),
+  GMAIL_REFRESH_CREDENTIAL: z.string().default(''),
   GMAIL_USER: z.string().default(''),
 
   // App URL (for email links)

@@ -24,10 +24,10 @@ if (fs.existsSync(envPath)) {
 }
 
 const CLIENT_ID = process.env.GMAIL_CLIENT_ID;
-const CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const CLIENT_SECRET = process.env.GMAIL_CLIENT_KEY;
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.error('Set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET in .env first');
+  console.error('Set GMAIL_CLIENT_ID and GMAIL_CLIENT_KEY in .env first');
   process.exit(1);
 }
 const REDIRECT_URI = 'http://localhost:9090';

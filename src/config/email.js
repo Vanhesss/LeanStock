@@ -13,8 +13,8 @@ function getTransporter() {
       type: 'OAuth2',
       user: env.GMAIL_USER,
       clientId: env.GMAIL_CLIENT_ID,
-      clientSecret: env.GMAIL_CLIENT_SECRET,
-      refreshToken: env.GMAIL_REFRESH_TOKEN,
+      clientSecret: env.GMAIL_CLIENT_KEY,
+      refreshToken: env.GMAIL_REFRESH_CREDENTIAL,
     },
   });
 
