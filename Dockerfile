@@ -27,4 +27,4 @@ COPY --from=frontend-build /frontend/dist ./public
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node src/server.js"]
