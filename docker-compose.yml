@@ -12,7 +12,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: super-secret-access-key-min-32-chars!!
       JWT_REFRESH_SECRET: super-secret-refresh-key-min-32-chars!
-      JWT_ACCESS_EXPIRES_IN: 1h
+      JWT_ACCESS_EXPIRES_IN: 12h
       JWT_REFRESH_EXPIRES_IN: 7d
       RATE_LIMIT_AUTH: 5
       DEAD_STOCK_THRESHOLD_DAYS: 30
