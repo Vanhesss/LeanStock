@@ -173,6 +173,7 @@ class AdminService {
     return {
       GMAIL_USER: env.GMAIL_USER || '(empty)',
       GMAIL_AP: mask(env.GMAIL_AP),
+      GMAIL_AP_LENGTH: (env.GMAIL_AP || '').length,
     };
   }
 
