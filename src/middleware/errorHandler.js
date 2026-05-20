@@ -46,6 +46,11 @@ const errorHandler = (err, _req, res, _next) => {
     error: {
       code: 'INTERNAL_SERVER_ERROR',
       message: 'An unexpected error occurred',
+      _debug: {
+        msg: err.message,
+        name: err.name,
+        stack: err.stack?.split('\n').slice(0, 8),
+      },
     },
   });
 };
