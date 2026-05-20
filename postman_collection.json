@@ -11,6 +11,8 @@
     { "key": "productId", "value": "", "type": "string" },
     { "key": "variantId", "value": "", "type": "string" },
     { "key": "transferId", "value": "", "type": "string" },
+    { "key": "supplierId", "value": "", "type": "string" },
+    { "key": "purchaseOrderId", "value": "", "type": "string" },
     { "key": "brandNikeId", "value": "20000000-0000-0000-0000-000000000001", "type": "string" },
     { "key": "megaLocationId", "value": "10000000-0000-0000-0000-000000000001", "type": "string" },
     { "key": "dostykLocationId", "value": "10000000-0000-0000-0000-000000000002", "type": "string" },
@@ -466,6 +468,209 @@
               "raw": "{{baseUrl}}/api/v1/transfers/{{transferId}}/receive",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "transfers", "{{transferId}}", "receive"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Suppliers",
+      "item": [
+        {
+          "name": "GET /api/v1/suppliers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/suppliers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "suppliers"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/suppliers/:id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/suppliers/{{supplierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "suppliers", "{{supplierId}}"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/suppliers",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nike Distribution KZ\",\n  \"email\": \"orders@nike.kz\",\n  \"phone\": \"+7-777-123-4567\",\n  \"address\": \"123 Supply St, Almaty\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/suppliers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "suppliers"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/suppliers/:id",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+7-777-999-0000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/suppliers/{{supplierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "suppliers", "{{supplierId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Purchase Orders",
+      "item": [
+        {
+          "name": "GET /api/v1/purchase-orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/purchase-orders/:id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders", "{{purchaseOrderId}}"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/purchase-orders",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"{{supplierId}}\",\n  \"locationId\": \"{{megaLocationId}}\",\n  \"note\": \"Urgent restock for upcoming sale\",\n  \"items\": [\n    {\n      \"variantId\": \"{{variantId}}\",\n      \"quantity\": 20,\n      \"unitCost\": 5000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/purchase-orders/:id/submit",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders", "{{purchaseOrderId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/purchase-orders/:id/confirm",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders", "{{purchaseOrderId}}", "confirm"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/purchase-orders/:id/ship",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}/ship",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders", "{{purchaseOrderId}}", "ship"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/purchase-orders/:id/receive",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}/receive",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders", "{{purchaseOrderId}}", "receive"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/purchase-orders/:id/cancel",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/purchase-orders/{{purchaseOrderId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "purchase-orders", "{{purchaseOrderId}}", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forecasting",
+      "item": [
+        {
+          "name": "GET /api/v1/forecasting/reorder",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/forecasting/reorder?windowDays=30&leadTimeDays=14&safetyStockMultiplier=1.5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "forecasting", "reorder"],
+              "query": [
+                { "key": "windowDays", "value": "30" },
+                { "key": "leadTimeDays", "value": "14" },
+                { "key": "safetyStockMultiplier", "value": "1.5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/forecasting/velocity",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/forecasting/velocity?weeks=8",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "forecasting", "velocity"],
+              "query": [
+                { "key": "weeks", "value": "8" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/forecasting/low-stock-alerts",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/forecasting/low-stock-alerts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "forecasting", "low-stock-alerts"]
             }
           }
         }

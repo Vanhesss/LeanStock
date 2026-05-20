@@ -71,10 +71,64 @@ function transferShippedEmail(managerEmail, transfer) {
   };
 }
 
+function transferReceivedEmail(managerEmail, transfer) {
+  return {
+    subject: `Transfer #${transfer.id.slice(0, 8)} Received`,
+    html: `
+      <h2>Transfer Completed</h2>
+      <p><strong>From:</strong> ${transfer.sourceLocation}</p>
+      <p><strong>To:</strong> ${transfer.destLocation}</p>
+      <p><strong>Items:</strong> ${transfer.itemCount} line items</p>
+      <p>The transfer has been received and inventory has been updated at the destination location.</p>
+    `,
+  };
+}
+
+function lowStockAlertEmail(firstName, items) {
+  const rows = items
+    .map(
+      (i) =>
+        `<tr><td>${i.sku}</td><td>${i.productModel}</td><td>${i.locationName}</td><td style="color:red;font-weight:bold;">${i.onHand}</td></tr>`
+    )
+    .join('');
+
+  return {
+    subject: `Low Stock Alert — ${items.length} item(s) need attention`,
+    html: `
+      <h2>Low Stock Alert</h2>
+      <p>Hi ${firstName}, the following items are running low on stock:</p>
+      <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;">
+        <thead><tr><th>SKU</th><th>Product</th><th>Location</th><th>On Hand</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="margin-top:16px;">Please review and consider placing a purchase order to restock these items.</p>
+    `,
+  };
+}
+
+function purchaseOrderConfirmationEmail(firstName, po) {
+  return {
+    subject: `Purchase Order ${po.orderNumber} Confirmed`,
+    html: `
+      <h2>Purchase Order Confirmed</h2>
+      <p>Hi ${firstName}, your purchase order has been confirmed by the supplier.</p>
+      <p><strong>Order #:</strong> ${po.orderNumber}</p>
+      <p><strong>Supplier:</strong> ${po.supplierName}</p>
+      <p><strong>Destination:</strong> ${po.locationName}</p>
+      <p><strong>Items:</strong> ${po.itemCount} line items</p>
+      <p><strong>Total Amount:</strong> $${(po.totalAmount / 100).toFixed(2)}</p>
+      <p>You will be notified when the order ships and when it arrives.</p>
+    `,
+  };
+}
+
 module.exports = {
   verificationEmail,
   passwordResetEmail,
   saleConfirmationEmail,
   reservationCreatedEmail,
   transferShippedEmail,
+  transferReceivedEmail,
+  lowStockAlertEmail,
+  purchaseOrderConfirmationEmail,
 };

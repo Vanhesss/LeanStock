@@ -20,10 +20,10 @@ describe('Auth Verification & Password Reset Endpoints', () => {
       expect(res.status).toBe(422);
     });
 
-    test('should reject invalid token', async () => {
+    test('should reject invalid code', async () => {
       const res = await request(app)
         .post('/api/v1/auth/verify-email')
-        .send({ token: 'invalid-token-that-does-not-exist' });
+        .send({ email: 'admin@leanstock.kz', code: '000000' });
 
       expect(res.status).toBe(400);
     });
@@ -116,7 +116,7 @@ describe('Auth Verification & Password Reset Endpoints', () => {
         .post('/api/v1/auth/login')
         .send({ email, password: 'TestPass123!' });
 
-      expect(loginRes.status).toBe(401);
+      expect(loginRes.status).toBe(403);
       expect(loginRes.body.error.message).toContain('verify');
     });
   });

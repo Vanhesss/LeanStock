@@ -14,6 +14,9 @@ const transfersRoutes = require('./modules/transfers/transfers.routes')
 const salesRoutes = require('./modules/sales/sales.routes')
 const reservationsRoutes = require('./modules/reservations/reservations.routes')
 const adminRoutes = require('./modules/admin/admin.routes')
+const suppliersRoutes = require('./modules/suppliers/suppliers.routes')
+const purchaseOrdersRoutes = require('./modules/purchaseOrders/purchaseOrders.routes')
+const forecastingRoutes = require('./modules/forecasting/forecasting.routes')
 const { authenticate } = require('./middleware/authenticate')
 const prisma = require('./config/prisma')
 
@@ -55,6 +58,9 @@ app.use('/api/v1/transfers', transfersRoutes)
 app.use('/api/v1/sales', salesRoutes)
 app.use('/api/v1/reservations', reservationsRoutes)
 app.use('/api/v1/admin', adminRoutes)
+app.use('/api/v1/suppliers', suppliersRoutes)
+app.use('/api/v1/purchase-orders', purchaseOrdersRoutes)
+app.use('/api/v1/forecasting', forecastingRoutes)
 
 // ──────────── Locations (all authenticated users) ────────────
 app.get('/api/v1/locations', authenticate, async (req, res, next) => {

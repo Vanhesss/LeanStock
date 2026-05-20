@@ -4,8 +4,9 @@ info:
   description: |
     Inventory Management System for a multi-location sneaker retail chain.
     Provides full product catalog, inventory tracking, inter-location transfers,
-    sales recording, reservations, dead stock decay, and admin management.
-  version: 2.1.0
+    sales recording, reservations, dead stock decay, supplier management,
+    purchase orders, demand forecasting, and admin management.
+  version: 3.0.0
 servers:
   - url: http://localhost:3000/api/v1
     description: Local development
@@ -48,6 +49,30 @@ components:
           type: string
           nullable: true
           example: "eyJpZCI6ImE1ZjMwMGE4LTRiNmItNGI1NC04YjRiLTk2NjA3N2Q3YzA5MSJ9"
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Nike Distribution KZ"
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
     User:
       type: object
       properties:
@@ -2173,3 +2198,329 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  # ──────────── Suppliers ────────────
+
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      summary: List suppliers (Manager+)
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supplier list with pagination
+    post:
+      tags: [Suppliers]
+      summary: Create supplier (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: "Nike Distribution KZ"
+                email:
+                  type: string
+                  format: email
+                  example: "orders@nike.kz"
+                phone:
+                  type: string
+                  example: "+7-777-123-4567"
+                address:
+                  type: string
+                  example: "123 Supply St, Almaty"
+      responses:
+        "201":
+          description: Supplier created
+
+  /suppliers/{id}:
+    get:
+      tags: [Suppliers]
+      summary: Get supplier by ID with recent POs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Supplier details
+    patch:
+      tags: [Suppliers]
+      summary: Update supplier (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                address:
+                  type: string
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: Supplier updated
+
+  # ──────────── Purchase Orders ────────────
+
+  /purchase-orders:
+    get:
+      tags: [Purchase Orders]
+      summary: List purchase orders (Manager+)
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, SUBMITTED, CONFIRMED, SHIPPED, RECEIVED, CANCELLED]
+        - name: supplierId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Purchase order list
+    post:
+      tags: [Purchase Orders]
+      summary: Create purchase order (Manager+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [supplierId, locationId, items]
+              properties:
+                supplierId:
+                  type: string
+                  format: uuid
+                locationId:
+                  type: string
+                  format: uuid
+                note:
+                  type: string
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, quantity, unitCost]
+                    properties:
+                      variantId:
+                        type: string
+                        format: uuid
+                      quantity:
+                        type: integer
+                        minimum: 1
+                        example: 10
+                      unitCost:
+                        type: integer
+                        minimum: 1
+                        example: 5000
+      responses:
+        "201":
+          description: Purchase order created
+
+  /purchase-orders/{id}:
+    get:
+      tags: [Purchase Orders]
+      summary: Get purchase order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Purchase order details with items
+
+  /purchase-orders/{id}/submit:
+    patch:
+      tags: [Purchase Orders]
+      summary: Submit PO (DRAFT -> SUBMITTED)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Purchase order submitted
+
+  /purchase-orders/{id}/confirm:
+    patch:
+      tags: [Purchase Orders]
+      summary: Confirm PO (SUBMITTED -> CONFIRMED, sends confirmation email)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Purchase order confirmed
+
+  /purchase-orders/{id}/ship:
+    patch:
+      tags: [Purchase Orders]
+      summary: Mark PO as shipped (CONFIRMED -> SHIPPED)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Purchase order shipped
+
+  /purchase-orders/{id}/receive:
+    patch:
+      tags: [Purchase Orders]
+      summary: Receive PO and update inventory (SHIPPED -> RECEIVED)
+      description: Atomically receives all items into inventory using Serializable transaction isolation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Purchase order received, inventory updated
+
+  /purchase-orders/{id}/cancel:
+    patch:
+      tags: [Purchase Orders]
+      summary: Cancel purchase order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Purchase order cancelled
+
+  # ──────────── Forecasting & Reorder ────────────
+
+  /forecasting/reorder:
+    get:
+      tags: [Forecasting]
+      summary: Predictive reorder suggestions (moving average)
+      description: |
+        Calculates simple moving average of daily sales over a configurable window,
+        projects demand for lead time period, and suggests reorder quantities
+        for items where available stock falls below the reorder point.
+      parameters:
+        - name: windowDays
+          in: query
+          description: Sales history window in days (default 30)
+          schema:
+            type: string
+            example: "30"
+        - name: leadTimeDays
+          in: query
+          description: Supplier lead time in days (default 14)
+          schema:
+            type: string
+            example: "14"
+        - name: safetyStockMultiplier
+          in: query
+          description: Safety stock multiplier (default 1.5)
+          schema:
+            type: string
+            example: "1.5"
+      responses:
+        "200":
+          description: Reorder suggestions with urgency levels (CRITICAL/HIGH/MEDIUM)
+
+  /forecasting/velocity:
+    get:
+      tags: [Forecasting]
+      summary: Sales velocity analysis (linear regression trend)
+      description: |
+        Returns weekly sales buckets and calculates linear regression slope
+        to determine INCREASING, STABLE, or DECREASING trend.
+      parameters:
+        - name: weeks
+          in: query
+          description: Number of weeks to analyze (default 8)
+          schema:
+            type: string
+            example: "8"
+        - name: variantId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: locationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Sales velocity with trend analysis
+
+  /forecasting/low-stock-alerts:
+    post:
+      tags: [Forecasting]
+      summary: Trigger low-stock alert emails to managers
+      description: Checks inventory for items below threshold and sends alert emails to all active managers.
+      responses:
+        "200":
+          description: Low-stock alerts sent

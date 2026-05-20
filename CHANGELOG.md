@@ -1,5 +1,40 @@
 # Changelog
 
+## [3.0.0] — Final Defense
+
+### Added — Supplier & Purchase Order Module
+- Full supplier CRUD: `GET/POST /suppliers`, `GET/PATCH /suppliers/:id`
+- Complete PO workflow with state machine: DRAFT → SUBMITTED → CONFIRMED → SHIPPED → RECEIVED
+- PO endpoints: `GET/POST /purchase-orders`, `GET /purchase-orders/:id`, submit/confirm/ship/receive/cancel
+- PO receive atomically updates inventory using Serializable transaction isolation
+- Prisma migration: `add_suppliers_and_purchase_orders` (Supplier, PurchaseOrder, PurchaseOrderItem models)
+
+### Added — Forecasting & Predictive Reorder
+- `GET /forecasting/reorder` — Moving average-based reorder suggestions with configurable window, lead time, and safety stock multiplier. Returns urgency levels (CRITICAL/HIGH/MEDIUM).
+- `GET /forecasting/velocity` — Sales velocity analysis with weekly buckets and linear regression trend (INCREASING/STABLE/DECREASING).
+- `POST /forecasting/low-stock-alerts` — Scans inventory for low-stock items and sends alert emails to all active managers.
+
+### Added — New Email Templates
+- **Low-stock alert email** — Tabular alert sent to managers listing items below threshold
+- **Purchase order confirmation email** — Sent when PO is confirmed by supplier
+- **Transfer received email** — Sent when a transfer is completed at destination
+
+### Fixed
+- CORS wildcard `"*"` in production docker-compose.yml replaced with configurable `CORS_ORIGIN` env var
+- Gmail refresh token env var mismatch (`GMAIL_RFTK` → `GMAIL_RT`) in docker-compose.yml
+- 2 failing auth verification tests: verify-email schema mismatch and unverified login status code
+
+### Added — Deliverable Files
+- `CHECKLIST.txt` — Self-verification checklist
+- `DEPLOYED_URL.txt` — Production URL
+- `VIDEO_LINK.txt` — Defense video link
+
+### Tests
+- 20 test suites, 210 tests, all passing
+- New unit tests: suppliers validation, purchase order validation & status transitions, forecasting calculations (SMA, regression, urgency)
+
+---
+
 ## [2.1.0] — Sprint 2 (Endterm)
 
 ### Removed

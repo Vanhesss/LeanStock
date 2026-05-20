@@ -2,7 +2,7 @@ const prisma = require('../../config/prisma');
 const { NotFoundError, ConflictError, AppError } = require('../../utils/errors');
 const { parsePagination, buildPaginationMeta, decodeCursor } = require('../../utils/pagination');
 const { sendEmail } = require('../../config/email');
-const { transferShippedEmail } = require('../../utils/emailTemplates');
+const { transferShippedEmail, transferReceivedEmail } = require('../../utils/emailTemplates');
 
 class TransfersService {
   async list(tenantId, query) {
@@ -213,7 +213,7 @@ class TransfersService {
    * Receive transfer — atomically increment stock at destination.
    */
   async receive(tenantId, transferId) {
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const transfer = await tx.transfer.findFirst({
         where: { id: transferId, tenantId },
         include: { items: { include: { variant: { include: { product: true } } } } },
@@ -257,6 +257,25 @@ class TransfersService {
         },
       });
     });
+
+    // Send transfer received email notification (async, non-blocking)
+    prisma.user.findUnique({ where: { id: result.requestedBy } })
+      .then((user) => {
+        if (user) {
+          sendEmail({
+            to: user.email,
+            ...transferReceivedEmail(user.email, {
+              id: result.id,
+              sourceLocation: result.sourceLocation.name,
+              destLocation: result.destLocation.name,
+              itemCount: result.items.length,
+            }),
+          });
+        }
+      })
+      .catch(() => {});
+
+    return result;
   }
 }
 

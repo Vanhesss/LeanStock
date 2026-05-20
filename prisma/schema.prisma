@@ -44,6 +44,15 @@ enum AdjustmentReason {
   AUDIT
 }
 
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  SHIPPED
+  RECEIVED
+  CANCELLED
+}
+
 // ──────────── MODELS ────────────
 
 model User {
@@ -64,10 +73,11 @@ model User {
   createdAt                 DateTime  @default(now()) @map("created_at")
   updatedAt                 DateTime  @updatedAt @map("updated_at")
 
-  location      Location?     @relation(fields: [locationId], references: [id])
-  sales         Sale[]
-  reservations  Reservation[]
-  auditLogs     AuditLog[]
+  location        Location?       @relation(fields: [locationId], references: [id])
+  sales           Sale[]
+  reservations    Reservation[]
+  auditLogs       AuditLog[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([tenantId, email])
   @@index([tenantId, locationId])
@@ -92,6 +102,7 @@ model Location {
   transfersIn        Transfer[]    @relation("TransferDest")
   reservations       Reservation[]
   priceHistories     PriceHistory[]
+  purchaseOrders     PurchaseOrder[]
 
   @@index([tenantId])
   @@map("locations")
@@ -137,12 +148,13 @@ model ProductVariant {
   size      Decimal  @db.Decimal(4, 1)
   createdAt DateTime @default(now()) @map("created_at")
 
-  product        Product        @relation(fields: [productId], references: [id])
-  inventory      Inventory[]
-  sales          Sale[]
-  transferItems  TransferItem[]
-  reservations   Reservation[]
-  priceHistories PriceHistory[]
+  product             Product             @relation(fields: [productId], references: [id])
+  inventory           Inventory[]
+  sales               Sale[]
+  transferItems       TransferItem[]
+  reservations        Reservation[]
+  priceHistories      PriceHistory[]
+  purchaseOrderItems  PurchaseOrderItem[]
 
   @@index([productId, size])
   @@map("product_variants")
@@ -282,4 +294,60 @@ model AuditLog {
   @@index([tenantId, userId, createdAt])
   @@index([tenantId, createdAt])
   @@map("audit_logs")
+}
+
+// ──────────── SUPPLIER & PURCHASE ORDERS ────────────
+
+model Supplier {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  tenantId    String              @map("tenant_id")
+  supplierId  String              @map("supplier_id")
+  locationId  String              @map("location_id")
+  status      PurchaseOrderStatus @default(DRAFT)
+  orderNumber String              @unique @map("order_number")
+  totalAmount Int                 @default(0) @map("total_amount")
+  note        String?
+  orderedBy   String              @map("ordered_by")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  location Location            @relation(fields: [locationId], references: [id])
+  orderer  User                @relation(fields: [orderedBy], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(uuid())
+  purchaseOrderId String @map("purchase_order_id")
+  variantId       String @map("variant_id")
+  quantity        Int
+  unitCost        Int    @map("unit_cost")
+
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id])
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@map("purchase_order_items")
 }

@@ -67,7 +67,7 @@ All seeded users have verified emails.
 
 ---
 
-## API Endpoints (28 total)
+## API Endpoints (43 total)
 
 ### Auth
 
@@ -141,6 +141,36 @@ All seeded users have verified emails.
 | POST   | `/api/v1/admin/jobs/dead-stock-decay`  | Trigger dead stock decay job     |
 | POST   | `/api/v1/admin/jobs/reservation-expiry`| Trigger reservation expiry job   |
 
+### Suppliers
+
+| Method | Endpoint                  | Description                  | Access  |
+|--------|---------------------------|------------------------------|---------|
+| GET    | `/api/v1/suppliers`       | List suppliers               | Manager |
+| GET    | `/api/v1/suppliers/:id`   | Get supplier with recent POs | Manager |
+| POST   | `/api/v1/suppliers`       | Create supplier              | Admin   |
+| PATCH  | `/api/v1/suppliers/:id`   | Update supplier              | Admin   |
+
+### Purchase Orders (State Machine: DRAFT → SUBMITTED → CONFIRMED → SHIPPED → RECEIVED)
+
+| Method | Endpoint                                | Description                          | Access  |
+|--------|-----------------------------------------|--------------------------------------|---------|
+| GET    | `/api/v1/purchase-orders`               | List purchase orders                 | Manager |
+| GET    | `/api/v1/purchase-orders/:id`           | Get PO details                       | Manager |
+| POST   | `/api/v1/purchase-orders`               | Create purchase order                | Manager |
+| PATCH  | `/api/v1/purchase-orders/:id/submit`    | Submit PO to supplier                | Manager |
+| PATCH  | `/api/v1/purchase-orders/:id/confirm`   | Confirm PO (sends email)             | Manager |
+| PATCH  | `/api/v1/purchase-orders/:id/ship`      | Mark PO as shipped                   | Manager |
+| PATCH  | `/api/v1/purchase-orders/:id/receive`   | Receive PO (atomic stock update)     | Manager |
+| PATCH  | `/api/v1/purchase-orders/:id/cancel`    | Cancel PO                            | Manager |
+
+### Forecasting & Reorder
+
+| Method | Endpoint                                | Description                              | Access  |
+|--------|-----------------------------------------|------------------------------------------|---------|
+| GET    | `/api/v1/forecasting/reorder`           | Predictive reorder suggestions (SMA)     | Manager |
+| GET    | `/api/v1/forecasting/velocity`          | Sales velocity with trend (regression)   | Manager |
+| POST   | `/api/v1/forecasting/low-stock-alerts`  | Send low-stock alert emails to managers  | Manager |
+
 ### System
 
 | Method | Endpoint   | Description    |
@@ -154,13 +184,16 @@ All seeded users have verified emails.
 
 All emails are sent asynchronously via BullMQ queue — the API never blocks on SMTP.
 
-| Event                | Trigger                         | Recipient        |
-|----------------------|---------------------------------|------------------|
-| Verification email   | User registration               | New user         |
-| Password reset       | Forgot-password request         | User             |
-| Sale confirmation    | Sale recorded                   | Staff who sold   |
-| Reservation created  | Reservation made                | Staff who reserved |
-| Transfer shipped     | Transfer moves to IN_TRANSIT    | Requesting manager |
+| Event                      | Trigger                         | Recipient          |
+|----------------------------|---------------------------------|--------------------|
+| Verification email         | User registration               | New user           |
+| Password reset             | Forgot-password request         | User               |
+| Sale confirmation          | Sale recorded                   | Staff who sold     |
+| Reservation created        | Reservation made                | Staff who reserved |
+| Transfer shipped           | Transfer moves to IN_TRANSIT    | Requesting manager |
+| Transfer received          | Transfer completed              | Requesting manager |
+| Low-stock alert            | Triggered via forecasting API   | All active managers|
+| PO confirmation            | Purchase order confirmed        | PO orderer         |
 
 ---
 
@@ -194,7 +227,7 @@ All background processing uses **BullMQ** with Redis-backed queues.
 ## Testing
 
 ```bash
-# Unit tests (no database needed) — 116 tests across 10 suites
+# Unit tests (no database needed) — 140+ tests across 13 suites
 npm run test:unit
 
 # Integration tests (requires running postgres + redis)
@@ -216,12 +249,12 @@ See `.env.example` for all required variables. Key ones:
 | REDIS_URL   | Redis connection string               |
 | JWT_ACCESS_SECRET  | JWT signing secret (min 32 chars)  |
 | JWT_REFRESH_SECRET | JWT refresh secret (min 32 chars)  |
-| SMTP_HOST   | Email server hostname                |
-| SMTP_PORT   | Email server port (587 for TLS)      |
-| SMTP_USER   | Email account username               |
-| SMTP_PASS   | Email account password / app password|
-| SMTP_FROM   | Sender email address                 |
+| GMAIL_CLIENT_ID | Gmail OAuth2 client ID            |
+| GMAIL_CS    | Gmail OAuth2 client secret           |
+| GMAIL_RT    | Gmail OAuth2 refresh token           |
+| GMAIL_USER  | Gmail sender email address           |
 | APP_URL     | Base URL for email links             |
+| CORS_ORIGIN | Allowed CORS origin (deployed domain)|
 
 ---
 
@@ -236,9 +269,12 @@ src/
 │   ├── products/    # CRUD with tenant_id filtering
 │   ├── inventory/   # receive, adjust (Serializable isolation)
 │   ├── transfers/   # state machine with atomic stock operations
-│   ├── sales/       # record sales with stock locking
-│   ├── reservations/# create, cancel, convert with stock reservation
-│   └── admin/       # users, locations, brands, audit logs, price history, queues
+│   ├── sales/          # record sales with stock locking
+│   ├── reservations/   # create, cancel, convert with stock reservation
+│   ├── suppliers/      # supplier CRUD
+│   ├── purchaseOrders/ # PO workflow (DRAFT→SUBMITTED→CONFIRMED→SHIPPED→RECEIVED)
+│   ├── forecasting/    # reorder suggestions (SMA), velocity (regression), low-stock alerts
+│   └── admin/          # users, locations, brands, audit logs, price history, queues
 ├── jobs/            # cron schedules → BullMQ queue dispatch
 ├── workers/         # BullMQ workers: email, dead stock, reservation expiry
 └── utils/           # errors, logger, pagination, emailTemplates
