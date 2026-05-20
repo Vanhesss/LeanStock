@@ -169,11 +169,18 @@ class AdminService {
   // ──────────── Email Config Diagnostic ────────────
   getEmailConfig() {
     const { env } = require('../../config/env');
+    const raw = env.GMAIL_AP || '';
+    const trimmed = raw.trim();
     const mask = (s) => (s ? `${s.slice(0, 4)}...${s.slice(-4)}` : '(empty)');
     return {
       GMAIL_USER: env.GMAIL_USER || '(empty)',
-      GMAIL_AP: mask(env.GMAIL_AP),
-      GMAIL_AP_LENGTH: (env.GMAIL_AP || '').length,
+      GMAIL_USER_LENGTH: (env.GMAIL_USER || '').length,
+      GMAIL_AP: mask(trimmed),
+      GMAIL_AP_RAW_LENGTH: raw.length,
+      GMAIL_AP_TRIMMED_LENGTH: trimmed.length,
+      GMAIL_AP_HAS_WHITESPACE: raw !== trimmed,
+      GMAIL_AP_FIRST_CHAR_CODE: raw.charCodeAt(0) || null,
+      GMAIL_AP_LAST_CHAR_CODE: raw.charCodeAt(raw.length - 1) || null,
     };
   }
 

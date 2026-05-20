@@ -7,11 +7,21 @@ let transporter;
 function getTransporter() {
   if (transporter) return transporter;
 
+  const gmailUser = (env.GMAIL_USER || '').trim();
+  const gmailPass = (env.GMAIL_AP || '').trim();
+
+  logger.info(
+    { user: gmailUser, passLen: gmailPass.length, passPreview: gmailPass.slice(0, 4) },
+    'Creating Gmail transporter',
+  );
+
   transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
-      user: env.GMAIL_USER,
-      pass: env.GMAIL_AP,
+      user: gmailUser,
+      pass: gmailPass,
     },
   });
 
@@ -35,7 +45,7 @@ function sendEmail({ to, subject, html }) {
  */
 async function deliverEmail({ to, subject, html }) {
   const mailOptions = {
-    from: `"LeanStock" <${env.GMAIL_USER}>`,
+    from: `"LeanStock" <${(env.GMAIL_USER || '').trim()}>`,
     to,
     subject,
     html,
