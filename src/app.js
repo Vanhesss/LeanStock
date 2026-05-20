@@ -51,8 +51,11 @@ app.get('/health', (_req, res) => {
 app.use(express.static(path.join(__dirname, '..', 'public')))
 
 // ──────────── Debug (TEMPORARY) ────────────
-app.post('/api/v1/debug/login-test', async (req, res) => {
-  try {
+app.get('/api/v1/debug/ping', (_req, res) => {
+  res.json({ ok: true, env_keys: Object.keys(env).sort() })
+})
+app.post('/api/v1/debug/login-test', (req, res) => {
+  (async () => {
     const bcrypt = require('bcrypt')
     const jwt = require('jsonwebtoken')
     const { email, password } = req.body
@@ -62,9 +65,9 @@ app.post('/api/v1/debug/login-test', async (req, res) => {
     if (!valid) return res.json({ step: 'bcrypt', error: 'Wrong password', hashPrefix: user.password.slice(0, 10) })
     const token = jwt.sign({ userId: user.id }, env.JWT_ACCESS_SECRET, { expiresIn: '1h' })
     return res.json({ step: 'success', tokenPrefix: token.slice(0, 20), userId: user.id })
-  } catch (err) {
-    return res.status(500).json({ step: 'error', message: err.message, stack: err.stack?.split('\n').slice(0, 5) })
-  }
+  })().catch((err) => {
+    res.status(500).json({ step: 'error', message: err.message, stack: err.stack?.split('\n').slice(0, 5) })
+  })
 })
 
 // ──────────── API Routes ────────────
