@@ -20,7 +20,7 @@ services:
       DEAD_STOCK_INTERVAL_HOURS: 72
       DEAD_STOCK_PRICE_FLOOR_PERCENT: 40
       RESERVATION_TTL_HOURS: 24
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://leanstock.deployrocks.com}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://vanhesss-leanstock.kazi.rocks}
       DEFAULT_TENANT_ID: 00000000-0000-0000-0000-000000000001
       GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
       GMAIL_CS: ${GMAIL_CS}
