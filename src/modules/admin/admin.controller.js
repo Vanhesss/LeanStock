@@ -10,6 +10,24 @@ class AdminController {
     }
   }
 
+  async updateUser(req, res, next) {
+    try {
+      const user = await adminService.updateUser(req.user.tenantId, req.params.id, req.body);
+      res.json({ success: true, data: user });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteUser(req, res, next) {
+    try {
+      const result = await adminService.deleteUser(req.user.tenantId, req.params.id, req.user.userId);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listLocations(req, res, next) {
     try {
       const result = await adminService.listLocations(req.user.tenantId, req.query);

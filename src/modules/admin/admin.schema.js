@@ -38,6 +38,14 @@ const locationsQuerySchema = z.object({
   type: z.enum(['STORE', 'WAREHOUSE']).optional(),
 });
 
+const updateUserSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  role: z.enum(['ADMIN', 'MANAGER', 'STAFF']).optional(),
+  locationId: z.string().uuid().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
 module.exports = {
   createLocationSchema,
   createBrandSchema,
@@ -45,4 +53,5 @@ module.exports = {
   auditLogsQuerySchema,
   priceHistoryQuerySchema,
   locationsQuerySchema,
+  updateUserSchema,
 };

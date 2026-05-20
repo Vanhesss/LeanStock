@@ -45,6 +45,50 @@ class AdminService {
     return { data, meta: buildPaginationMeta(items, total, limit) };
   }
 
+  async updateUser(tenantId, userId, data) {
+    const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
+    if (!user) {
+      const { NotFoundError } = require('../../utils/errors');
+      throw new NotFoundError('User', userId);
+    }
+
+    if (data.locationId) {
+      const location = await prisma.location.findFirst({
+        where: { id: data.locationId, tenantId },
+      });
+      if (!location) {
+        const { NotFoundError } = require('../../utils/errors');
+        throw new NotFoundError('Location', data.locationId);
+      }
+    }
+
+    return prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true, email: true, firstName: true, lastName: true,
+        role: true, locationId: true, isActive: true, isEmailVerified: true, createdAt: true,
+        location: { select: { name: true } },
+      },
+    });
+  }
+
+  async deleteUser(tenantId, userId, requestingUserId) {
+    const { AppError, NotFoundError } = require('../../utils/errors');
+
+    if (userId === requestingUserId) {
+      throw new AppError(400, 'CANNOT_DELETE_SELF', 'You cannot delete your own account');
+    }
+
+    const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
+    if (!user) {
+      throw new NotFoundError('User', userId);
+    }
+
+    await prisma.user.delete({ where: { id: userId } });
+    return { message: 'User deleted successfully' };
+  }
+
   // ──────────── Locations ────────────
   async listLocations(tenantId, query) {
     const { cursor, limit } = parsePagination(query);

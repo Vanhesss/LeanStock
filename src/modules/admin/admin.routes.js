@@ -10,6 +10,7 @@ const {
   auditLogsQuerySchema,
   priceHistoryQuerySchema,
   locationsQuerySchema,
+  updateUserSchema,
 } = require('./admin.schema');
 
 const router = Router();
@@ -20,6 +21,8 @@ router.use(authorize('ADMIN'));
 
 // ──────────── Users ────────────
 router.get('/users', validate(usersQuerySchema, 'query'), adminController.listUsers);
+router.patch('/users/:id', validate(updateUserSchema), adminController.updateUser);
+router.delete('/users/:id', adminController.deleteUser);
 
 // ──────────── Locations ────────────
 router.get('/locations', validate(locationsQuerySchema, 'query'), adminController.listLocations);
