@@ -14,7 +14,7 @@ import {
 import toast from 'react-hot-toast'
 import {
   Shield, Users, MapPin, Tag, ScrollText, TrendingDown, Cpu,
-  Plus, Play, RefreshCw,
+  Plus, Play, RefreshCw, Pencil, Trash2,
 } from 'lucide-react'
 
 function formatKZT(value) {
@@ -51,6 +51,8 @@ export default function AdminPage() {
   const [brandForm, setBrandForm] = useState({ name: '' })
   const [userForm, setUserForm] = useState({ email: '', password: '', firstName: '', lastName: '', role: 'STAFF', locationId: '' })
   const [locations, setLocations] = useState([])
+  const [editUser, setEditUser] = useState(null)
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', role: '', locationId: '', isActive: true })
 
   const endpoints = {
     users: '/admin/users',
@@ -129,6 +131,41 @@ export default function AdminPage() {
       load()
     } catch (err) {
       toast.error(err.response?.data?.error?.message || 'Failed to create user')
+    }
+  }
+
+  const openEditUser = (user) => {
+    setEditUser(user)
+    setEditForm({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      locationId: user.locationId || '',
+      isActive: user.isActive,
+    })
+  }
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault()
+    try {
+      const payload = { ...editForm, locationId: editForm.locationId || null }
+      await api.patch(`/admin/users/${editUser.id}`, payload)
+      toast.success('User updated!')
+      setEditUser(null)
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to update user')
+    }
+  }
+
+  const handleDeleteUser = async (user) => {
+    if (!confirm(`Delete ${user.firstName} ${user.lastName} (${user.email})? This cannot be undone.`)) return
+    try {
+      await api.delete(`/admin/users/${user.id}`)
+      toast.success('User deleted')
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to delete user')
     }
   }
 
@@ -241,7 +278,7 @@ export default function AdminPage() {
                   <Table>
                     <Thead>
                       <Tr>
-                        {tab === 'users' && <><Th>Name</Th><Th>Email</Th><Th>Role</Th><Th>Verified</Th><Th>Active</Th></>}
+                        {tab === 'users' && <><Th>Name</Th><Th>Email</Th><Th>Role</Th><Th>Verified</Th><Th>Active</Th><Th>Actions</Th></>}
                         {tab === 'locations' && <><Th>Name</Th><Th>Type</Th><Th>City</Th><Th>Active</Th></>}
                         {tab === 'brands' && <><Th>Name</Th><Th>Active</Th><Th>Created</Th></>}
                         {tab === 'audit' && <><Th>Action</Th><Th>Entity</Th><Th>User</Th><Th>Date</Th></>}
@@ -258,6 +295,16 @@ export default function AdminPage() {
                               <Td><Badge status={row.role}>{row.role}</Badge></Td>
                               <Td><Badge color={row.isEmailVerified ? 'green' : 'yellow'}>{row.isEmailVerified ? 'Yes' : 'No'}</Badge></Td>
                               <Td><Badge color={row.isActive ? 'green' : 'red'}>{row.isActive ? 'Yes' : 'No'}</Badge></Td>
+                              <Td>
+                                <div className="flex gap-1">
+                                  <button onClick={() => openEditUser(row)} className="p-1.5 rounded-lg hover:bg-white/10 text-surface-400 hover:text-primary-400 transition-colors cursor-pointer" title="Edit">
+                                    <Pencil size={15} />
+                                  </button>
+                                  <button onClick={() => handleDeleteUser(row)} className="p-1.5 rounded-lg hover:bg-white/10 text-surface-400 hover:text-danger-500 transition-colors cursor-pointer" title="Delete">
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </Td>
                             </>
                           )}
                           {tab === 'locations' && (
@@ -330,6 +377,44 @@ export default function AdminPage() {
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
             <Button type="submit" className="flex-1">Create</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit User Modal */}
+      <Modal open={!!editUser} onClose={() => setEditUser(null)} title="Edit User">
+        <form onSubmit={handleUpdateUser} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="First Name" value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} required />
+            <Input label="Last Name" value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-300 mb-1.5">Role</label>
+            <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+              <option value="ADMIN" className="bg-surface-900">Admin</option>
+              <option value="MANAGER" className="bg-surface-900">Manager</option>
+              <option value="STAFF" className="bg-surface-900">Staff</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-surface-300 mb-1.5">Location</label>
+            <select value={editForm.locationId} onChange={(e) => setEditForm({ ...editForm, locationId: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+              <option value="" className="bg-surface-900">None</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id} className="bg-surface-900">{loc.name} ({loc.type})</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-surface-300">Active</label>
+            <button type="button" onClick={() => setEditForm({ ...editForm, isActive: !editForm.isActive })}
+              className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${editForm.isActive ? 'bg-primary-600' : 'bg-white/10'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${editForm.isActive ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setEditUser(null)} className="flex-1">Cancel</Button>
+            <Button type="submit" className="flex-1">Save Changes</Button>
           </div>
         </form>
       </Modal>
