@@ -52,11 +52,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   DEFAULT_TENANT_ID: z.string().default('00000000-0000-0000-0000-000000000001'),
 
-  // Gmail OAuth2
-  GMAIL_CLIENT_ID: z.string().default(''),
-  GMAIL_CS: z.string().default(''),
-  GMAIL_RT: z.string().default(''),
+  // Gmail
   GMAIL_USER: z.string().default(''),
+  GMAIL_APP_PASSWORD: z.string().default(''),
 
   // App URL (for email links)
   APP_URL: z.string().default('http://localhost:3000'),

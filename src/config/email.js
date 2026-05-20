@@ -10,11 +10,8 @@ function getTransporter() {
   transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      type: 'OAuth2',
       user: env.GMAIL_USER,
-      clientId: env.GMAIL_CLIENT_ID,
-      clientSecret: env.GMAIL_CS,
-      refreshToken: env.GMAIL_RT,
+      pass: env.GMAIL_APP_PASSWORD,
     },
   });
 

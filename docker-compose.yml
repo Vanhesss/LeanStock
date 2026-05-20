@@ -22,10 +22,8 @@ services:
       RESERVATION_TTL_HOURS: 24
       CORS_ORIGIN: ${CORS_ORIGIN:-https://vanhesss-leanstock.kazi.rocks}
       DEFAULT_TENANT_ID: 00000000-0000-0000-0000-000000000001
-      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
-      GMAIL_CS: ${GMAIL_CS}
-      GMAIL_RT: ${GMAIL_RT}
       GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
       APP_URL: http://localhost:3000
     depends_on:
       postgres:
