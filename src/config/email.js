@@ -11,7 +11,7 @@ function getTransporter() {
     service: 'gmail',
     auth: {
       user: env.GMAIL_USER,
-      pass: env.GMAIL_APP_PASSWORD,
+      pass: env.GMAIL_AP,
     },
   });
 

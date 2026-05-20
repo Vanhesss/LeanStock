@@ -23,7 +23,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-https://vanhesss-leanstock.kazi.rocks}
       DEFAULT_TENANT_ID: 00000000-0000-0000-0000-000000000001
       GMAIL_USER: ${GMAIL_USER}
-      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      GMAIL_AP: ${GMAIL_AP}
       APP_URL: http://localhost:3000
     depends_on:
       postgres:

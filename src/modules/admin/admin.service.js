@@ -172,7 +172,7 @@ class AdminService {
     const mask = (s) => (s ? `${s.slice(0, 4)}...${s.slice(-4)}` : '(empty)');
     return {
       GMAIL_USER: env.GMAIL_USER || '(empty)',
-      GMAIL_APP_PASSWORD: mask(env.GMAIL_APP_PASSWORD),
+      GMAIL_AP: mask(env.GMAIL_AP),
     };
   }
 

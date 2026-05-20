@@ -54,7 +54,7 @@ const envSchema = z.object({
 
   // Gmail
   GMAIL_USER: z.string().default(''),
-  GMAIL_APP_PASSWORD: z.string().default(''),
+  GMAIL_AP: z.string().default(''),
 
   // App URL (for email links)
   APP_URL: z.string().default('http://localhost:3000'),
