@@ -1,0 +1,62 @@
+databases:
+  - name: leanstock-db
+    plan: free
+    databaseName: leanstock
+    user: leanstock
+
+services:
+  - type: redis
+    name: leanstock-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  - type: web
+    name: leanstock-app
+    plan: free
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: leanstock-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: leanstock-redis
+          type: redis
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: "12h"
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: "7d"
+      - key: RATE_LIMIT_AUTH
+        value: "50"
+      - key: DEAD_STOCK_THRESHOLD_DAYS
+        value: "30"
+      - key: DEAD_STOCK_MARKDOWN_PERCENT
+        value: "10"
+      - key: DEAD_STOCK_INTERVAL_HOURS
+        value: "72"
+      - key: DEAD_STOCK_PRICE_FLOOR_PERCENT
+        value: "40"
+      - key: RESERVATION_TTL_HOURS
+        value: "24"
+      - key: CORS_ORIGIN
+        value: "https://leanstock-app.onrender.com"
+      - key: DEFAULT_TENANT_ID
+        value: "00000000-0000-0000-0000-000000000001"
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_AP
+        sync: false
+      - key: APP_URL
+        value: "https://leanstock-app.onrender.com"
