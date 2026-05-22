@@ -29,15 +29,23 @@ function getTransporter() {
 }
 
 /**
- * Send email asynchronously via BullMQ queue.
- * The API endpoint does NOT block waiting for the email service to respond.
+ * Send email — tries BullMQ queue first, falls back to direct delivery.
  */
 function sendEmail({ to, subject, html }) {
-  // Lazy-require to avoid circular dependency
-  const { emailQueue } = require('./queue');
-  emailQueue.add('send-email', { to, subject, html }).catch((err) => {
-    logger.error({ error: err.message, to, subject }, 'Failed to enqueue email');
-  });
+  try {
+    const { emailQueue } = require('./queue');
+    emailQueue.add('send-email', { to, subject, html }).catch((err) => {
+      logger.warn({ error: err.message, to, subject }, 'Queue failed, sending email directly');
+      deliverEmail({ to, subject, html }).catch((e) => {
+        logger.error({ error: e.message, to, subject }, 'Direct email delivery also failed');
+      });
+    });
+  } catch (err) {
+    logger.warn({ error: err.message, to }, 'Queue unavailable, sending email directly');
+    deliverEmail({ to, subject, html }).catch((e) => {
+      logger.error({ error: e.message, to, subject }, 'Direct email delivery failed');
+    });
+  }
 }
 
 /**
