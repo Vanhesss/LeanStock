@@ -11,7 +11,7 @@ function getTransporter() {
   const gmailPass = (env.GMAIL_AP || '').trim();
 
   logger.info(
-    { user: gmailUser, passLen: gmailPass.length, passPreview: gmailPass.slice(0, 4) },
+    { user: gmailUser, passLen: gmailPass.length },
     'Creating Gmail transporter',
   );
 
@@ -29,27 +29,16 @@ function getTransporter() {
 }
 
 /**
- * Send email — tries BullMQ queue first, falls back to direct delivery.
+ * Send email directly via SMTP (no queue dependency).
  */
 function sendEmail({ to, subject, html }) {
-  try {
-    const { emailQueue } = require('./queue');
-    emailQueue.add('send-email', { to, subject, html }).catch((err) => {
-      logger.warn({ error: err.message, to, subject }, 'Queue failed, sending email directly');
-      deliverEmail({ to, subject, html }).catch((e) => {
-        logger.error({ error: e.message, to, subject }, 'Direct email delivery also failed');
-      });
-    });
-  } catch (err) {
-    logger.warn({ error: err.message, to }, 'Queue unavailable, sending email directly');
-    deliverEmail({ to, subject, html }).catch((e) => {
-      logger.error({ error: e.message, to, subject }, 'Direct email delivery failed');
-    });
-  }
+  deliverEmail({ to, subject, html }).catch((e) => {
+    logger.error({ error: e.message, to, subject }, 'Email delivery failed');
+  });
 }
 
 /**
- * Actually send email via Gmail OAuth2 (called by the email worker).
+ * Actually send email via Gmail SMTP.
  */
 async function deliverEmail({ to, subject, html }) {
   const mailOptions = {
@@ -59,6 +48,7 @@ async function deliverEmail({ to, subject, html }) {
     html,
   };
 
+  logger.info({ to, subject }, 'Sending email...');
   const info = await getTransporter().sendMail(mailOptions);
   logger.info({ messageId: info.messageId, to }, 'Email delivered');
   return info;
