@@ -19,6 +19,7 @@ function getTransporter() {
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
+    family: 4,
     auth: {
       user: gmailUser,
       pass: gmailPass,
